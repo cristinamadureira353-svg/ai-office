@@ -1,0 +1,6146 @@
+{
+  "version": 3,
+  "date": "2026-10-05",
+  "game": "AI 事务所",
+  "status": "Open-source preparation; see docs/VALIDATION.md for tested scope",
+  "generation": "built-in imagegen; original PNG pixels preserved",
+  "style": "warm original top-down three-quarter pixel office",
+  "logical_map": {
+    "cols": 40,
+    "rows": 24,
+    "original_cell_px": 32,
+    "preview_cell_px": 40,
+    "preview_only": true
+  },
+  "zones": [
+    {
+      "id": "lobby",
+      "name": "大堂接待与等候",
+      "function": "客户排队和派单"
+    },
+    {
+      "id": "office",
+      "name": "五人办公区",
+      "function": "五个 AI 工位"
+    },
+    {
+      "id": "tea",
+      "name": "茶水间",
+      "function": "恢复体力"
+    },
+    {
+      "id": "leisure",
+      "name": "摸鱼休息角",
+      "function": "恢复心情"
+    },
+    {
+      "id": "meeting",
+      "name": "五人会议室",
+      "function": "早会、谈判和复盘"
+    }
+  ],
+  "png_atlases": [
+    {
+      "file": "atlases/01-architecture.png",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "47d76837f478edbbef3a4451b4e8f1f112acff72aa77da637ba575166225935c",
+      "alpha_range": [
+        0,
+        255
+      ],
+      "fully_transparent_pixels": 602915,
+      "transparent_fraction": 0.38341,
+      "mode": "RGBA"
+    },
+    {
+      "file": "atlases/02-lobby.png",
+      "width": 1536,
+      "height": 1024,
+      "sha256": "0e8a5ef91f0c4a72ea8b108ee93e79ea795c434e45e6027755779a51d42c5660",
+      "alpha_range": [
+        0,
+        254
+      ],
+      "fully_transparent_pixels": 921777,
+      "transparent_fraction": 0.58605,
+      "mode": "RGBA"
+    },
+    {
+      "file": "atlases/03-office.png",
+      "width": 1536,
+      "height": 1024,
+      "sha256": "ed3db9db043f4963202d5808a2377a8579d206637ba58412b7f6d3f2e655c380",
+      "alpha_range": [
+        0,
+        254
+      ],
+      "fully_transparent_pixels": 927787,
+      "transparent_fraction": 0.58987,
+      "mode": "RGBA"
+    },
+    {
+      "file": "atlases/04-tea.png",
+      "width": 1536,
+      "height": 1024,
+      "sha256": "44abdf317bc24b02c85b8534ca03c0a4a20855cd3abee43b4652c279f149b03c",
+      "alpha_range": [
+        0,
+        254
+      ],
+      "fully_transparent_pixels": 822961,
+      "transparent_fraction": 0.52322,
+      "mode": "RGBA"
+    },
+    {
+      "file": "atlases/05-leisure.png",
+      "width": 1536,
+      "height": 1024,
+      "sha256": "e571d5ec20730a42a4a39b5aa260dfe9d90b0835b03d111d8ac9491fa163aab2",
+      "alpha_range": [
+        0,
+        254
+      ],
+      "fully_transparent_pixels": 904171,
+      "transparent_fraction": 0.57486,
+      "mode": "RGBA"
+    },
+    {
+      "file": "atlases/06-meeting.png",
+      "width": 1536,
+      "height": 1024,
+      "sha256": "1899fb32d2170ff1d77caa9dbe95bef077a5ef0d18995b8b32a233f47d7596bf",
+      "alpha_range": [
+        0,
+        254
+      ],
+      "fully_transparent_pixels": 870120,
+      "transparent_fraction": 0.55321,
+      "mode": "RGBA"
+    },
+    {
+      "file": "atlases/07-m3.png",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "af6ab0d63d73e11d91c4829b95635968076b2bba0665337d7ea045bf4e9839ee",
+      "alpha_range": [
+        0,
+        255
+      ],
+      "fully_transparent_pixels": 1268425,
+      "transparent_fraction": 0.80662,
+      "mode": "RGBA"
+    },
+    {
+      "file": "atlases/08-flash.png",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "bf0f5cc773e26985e6defa4366d9e15dc281cbcf574805e47cf7ae596f63e8e6",
+      "alpha_range": [
+        0,
+        255
+      ],
+      "fully_transparent_pixels": 1279792,
+      "transparent_fraction": 0.81385,
+      "mode": "RGBA"
+    },
+    {
+      "file": "atlases/09-longcat.png",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "575f513782ce56a2e7d720ce3e1d9d5113277883316fe040cf80cb86f56c0c93",
+      "alpha_range": [
+        0,
+        255
+      ],
+      "fully_transparent_pixels": 1272044,
+      "transparent_fraction": 0.80892,
+      "mode": "RGBA"
+    },
+    {
+      "file": "atlases/10-kimi.png",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "d788eb17cb636bf8b8961b1a76df36276cc28b5e0ce801a80c5a4bcc5fd0a5ec",
+      "alpha_range": [
+        0,
+        255
+      ],
+      "fully_transparent_pixels": 1292243,
+      "transparent_fraction": 0.82177,
+      "mode": "RGBA"
+    },
+    {
+      "file": "atlases/11-step5.png",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "86d0f145764567ea23ce757e91dff112738030887a21cabdc8195c144950a245",
+      "alpha_range": [
+        0,
+        255
+      ],
+      "fully_transparent_pixels": 1262733,
+      "transparent_fraction": 0.803,
+      "mode": "RGBA"
+    },
+    {
+      "file": "atlases/12-clients.png",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "50e20920fd518e59dd710c5dea57430f941bd98770e130723efe1df17030db7e",
+      "alpha_range": [
+        0,
+        255
+      ],
+      "fully_transparent_pixels": 903071,
+      "transparent_fraction": 0.57428,
+      "mode": "RGBA"
+    },
+    {
+      "file": "atlases/13-ui.png",
+      "width": 1254,
+      "height": 1254,
+      "sha256": "88b0e38ccaae0648f4f4853bb48b9cd9ba8039d58ade753167e6ea3c04af3d53",
+      "alpha_range": [
+        0,
+        255
+      ],
+      "fully_transparent_pixels": 996074,
+      "transparent_fraction": 0.63343,
+      "mode": "RGBA"
+    },
+    {
+      "file": "atlases/14-components.png",
+      "width": 1448,
+      "height": 1086,
+      "sha256": "26bcf622c902d1588f4e5cd9f82722c96a5c2bdd33c2655d3963817fe0202d1b",
+      "alpha_range": [
+        0,
+        255
+      ],
+      "fully_transparent_pixels": 1020272,
+      "transparent_fraction": 0.64881,
+      "mode": "RGBA"
+    }
+  ],
+  "counts": {
+    "atlases": 14,
+    "architectural_pieces": 16,
+    "zone_props": 30,
+    "support_components": 12,
+    "anchor_sprites": 5,
+    "idle_frames": 10,
+    "portraits": 5,
+    "employee_frames": 40,
+    "client_boss_sprites": 6,
+    "ui_pieces": 16,
+    "atlas_texture_resources": 140,
+    "sprite_frames": 10
+  },
+  "assets": [
+    {
+      "id": "floor_oak",
+      "label": "浅橡木地板",
+      "category": "architecture",
+      "zone": "shared",
+      "atlas": "assets/cozy_office/atlases/01-architecture.png",
+      "region": [
+        14,
+        14,
+        287,
+        286
+      ],
+      "search_rect": [
+        14,
+        14,
+        301,
+        300
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/architecture/floor_oak.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": true
+    },
+    {
+      "id": "floor_walnut",
+      "label": "深胡桃木地板",
+      "category": "architecture",
+      "zone": "shared",
+      "atlas": "assets/cozy_office/atlases/01-architecture.png",
+      "region": [
+        326,
+        14,
+        290,
+        286
+      ],
+      "search_rect": [
+        326,
+        14,
+        616,
+        300
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/architecture/floor_walnut.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": true
+    },
+    {
+      "id": "floor_stone",
+      "label": "奶油色地砖",
+      "category": "architecture",
+      "zone": "shared",
+      "atlas": "assets/cozy_office/atlases/01-architecture.png",
+      "region": [
+        641,
+        14,
+        284,
+        285
+      ],
+      "search_rect": [
+        641,
+        14,
+        925,
+        299
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/architecture/floor_stone.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": true
+    },
+    {
+      "id": "floor_carpet",
+      "label": "苔绿色地毯",
+      "category": "architecture",
+      "zone": "shared",
+      "atlas": "assets/cozy_office/atlases/01-architecture.png",
+      "region": [
+        951,
+        14,
+        288,
+        286
+      ],
+      "search_rect": [
+        951,
+        14,
+        1239,
+        300
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/architecture/floor_carpet.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": true
+    },
+    {
+      "id": "wall_north",
+      "label": "北侧墙面",
+      "category": "architecture",
+      "zone": "shared",
+      "atlas": "assets/cozy_office/atlases/01-architecture.png",
+      "region": [
+        7,
+        371,
+        301,
+        193
+      ],
+      "search_rect": [
+        0,
+        308,
+        314,
+        620
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/architecture/wall_north.tres",
+      "preview_width": 120,
+      "recommended_footprint_cells": null,
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "wall_east",
+      "label": "东侧墙面",
+      "category": "architecture",
+      "zone": "shared",
+      "atlas": "assets/cozy_office/atlases/01-architecture.png",
+      "region": [
+        418,
+        324,
+        125,
+        273
+      ],
+      "search_rect": [
+        314,
+        308,
+        624,
+        620
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/architecture/wall_east.tres",
+      "preview_width": 36,
+      "recommended_footprint_cells": null,
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "wall_south",
+      "label": "南侧矮墙",
+      "category": "architecture",
+      "zone": "shared",
+      "atlas": "assets/cozy_office/atlases/01-architecture.png",
+      "region": [
+        628,
+        433,
+        308,
+        164
+      ],
+      "search_rect": [
+        624,
+        308,
+        940,
+        630
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/architecture/wall_south.tres",
+      "preview_width": 120,
+      "recommended_footprint_cells": null,
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "wall_west",
+      "label": "西侧墙面",
+      "category": "architecture",
+      "zone": "shared",
+      "atlas": "assets/cozy_office/atlases/01-architecture.png",
+      "region": [
+        1044,
+        327,
+        123,
+        269
+      ],
+      "search_rect": [
+        940,
+        308,
+        1254,
+        630
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/architecture/wall_west.tres",
+      "preview_width": 36,
+      "recommended_footprint_cells": null,
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "corner_nw",
+      "label": "西北墙角",
+      "category": "architecture",
+      "zone": "shared",
+      "atlas": "assets/cozy_office/atlases/01-architecture.png",
+      "region": [
+        32,
+        639,
+        239,
+        252
+      ],
+      "search_rect": [
+        0,
+        630,
+        314,
+        936
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/architecture/corner_nw.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": null,
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "corner_ne",
+      "label": "东北墙角",
+      "category": "architecture",
+      "zone": "shared",
+      "atlas": "assets/cozy_office/atlases/01-architecture.png",
+      "region": [
+        351,
+        639,
+        238,
+        251
+      ],
+      "search_rect": [
+        314,
+        630,
+        620,
+        936
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/architecture/corner_ne.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": null,
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "corner_sw",
+      "label": "西南墙角",
+      "category": "architecture",
+      "zone": "shared",
+      "atlas": "assets/cozy_office/atlases/01-architecture.png",
+      "region": [
+        657,
+        662,
+        246,
+        253
+      ],
+      "search_rect": [
+        620,
+        630,
+        940,
+        936
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/architecture/corner_sw.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": null,
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "corner_se",
+      "label": "东南墙角",
+      "category": "architecture",
+      "zone": "shared",
+      "atlas": "assets/cozy_office/atlases/01-architecture.png",
+      "region": [
+        976,
+        662,
+        247,
+        253
+      ],
+      "search_rect": [
+        940,
+        630,
+        1254,
+        936
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/architecture/corner_se.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": null,
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "door_closed",
+      "label": "关闭的入口门",
+      "category": "architecture",
+      "zone": "shared",
+      "atlas": "assets/cozy_office/atlases/01-architecture.png",
+      "region": [
+        57,
+        954,
+        204,
+        252
+      ],
+      "search_rect": [
+        0,
+        936,
+        314,
+        1254
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/architecture/door_closed.tres",
+      "preview_width": 76,
+      "recommended_footprint_cells": null,
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "door_open",
+      "label": "打开的入口门",
+      "category": "architecture",
+      "zone": "shared",
+      "atlas": "assets/cozy_office/atlases/01-architecture.png",
+      "region": [
+        358,
+        948,
+        222,
+        282
+      ],
+      "search_rect": [
+        314,
+        936,
+        617,
+        1254
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/architecture/door_open.tres",
+      "preview_width": 76,
+      "recommended_footprint_cells": null,
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "window",
+      "label": "木框窗户",
+      "category": "architecture",
+      "zone": "shared",
+      "atlas": "assets/cozy_office/atlases/01-architecture.png",
+      "region": [
+        635,
+        968,
+        336,
+        223
+      ],
+      "search_rect": [
+        619,
+        946,
+        983,
+        1254
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/architecture/window.tres",
+      "preview_width": 132,
+      "recommended_footprint_cells": null,
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "pendant_lamp",
+      "label": "暖光吊灯",
+      "category": "architecture",
+      "zone": "shared",
+      "atlas": "assets/cozy_office/atlases/01-architecture.png",
+      "region": [
+        1056,
+        960,
+        103,
+        220
+      ],
+      "search_rect": [
+        990,
+        936,
+        1254,
+        1254
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/architecture/pendant_lamp.tres",
+      "preview_width": 52,
+      "recommended_footprint_cells": null,
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "reception_counter",
+      "label": "完整接待台",
+      "category": "props",
+      "zone": "lobby",
+      "atlas": "assets/cozy_office/atlases/02-lobby.png",
+      "region": [
+        33,
+        172,
+        514,
+        281
+      ],
+      "search_rect": [
+        0,
+        0,
+        555,
+        505
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/props/reception_counter.tres",
+      "preview_width": 210,
+      "recommended_footprint_cells": [
+        5,
+        2
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "visitor_sofa",
+      "label": "等候区绿沙发",
+      "category": "props",
+      "zone": "lobby",
+      "atlas": "assets/cozy_office/atlases/02-lobby.png",
+      "region": [
+        578,
+        144,
+        438,
+        277
+      ],
+      "search_rect": [
+        555,
+        0,
+        1040,
+        505
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/props/visitor_sofa.tres",
+      "preview_width": 185,
+      "recommended_footprint_cells": [
+        4,
+        2
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "visitor_table",
+      "label": "等候区茶几",
+      "category": "props",
+      "zone": "lobby",
+      "atlas": "assets/cozy_office/atlases/02-lobby.png",
+      "region": [
+        1092,
+        172,
+        410,
+        260
+      ],
+      "search_rect": [
+        1040,
+        0,
+        1536,
+        505
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/props/visitor_table.tres",
+      "preview_width": 138,
+      "recommended_footprint_cells": [
+        3,
+        2
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "notice_board",
+      "label": "客户公告板",
+      "category": "props",
+      "zone": "lobby",
+      "atlas": "assets/cozy_office/atlases/02-lobby.png",
+      "region": [
+        65,
+        574,
+        419,
+        308
+      ],
+      "search_rect": [
+        0,
+        505,
+        535,
+        1024
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/props/notice_board.tres",
+      "preview_width": 140,
+      "recommended_footprint_cells": [
+        3,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "entrance_mat",
+      "label": "入口地垫",
+      "category": "props",
+      "zone": "lobby",
+      "atlas": "assets/cozy_office/atlases/02-lobby.png",
+      "region": [
+        581,
+        643,
+        448,
+        234
+      ],
+      "search_rect": [
+        535,
+        505,
+        1080,
+        1024
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/props/entrance_mat.tres",
+      "preview_width": 145,
+      "recommended_footprint_cells": [
+        3,
+        2
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "coat_stand",
+      "label": "落地衣帽架",
+      "category": "props",
+      "zone": "lobby",
+      "atlas": "assets/cozy_office/atlases/02-lobby.png",
+      "region": [
+        1202,
+        521,
+        216,
+        429
+      ],
+      "search_rect": [
+        1080,
+        505,
+        1536,
+        1024
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/props/coat_stand.tres",
+      "preview_width": 53,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "complete_desk",
+      "label": "完整电脑工位",
+      "category": "props",
+      "zone": "office",
+      "atlas": "assets/cozy_office/atlases/03-office.png",
+      "region": [
+        64,
+        83,
+        597,
+        387
+      ],
+      "search_rect": [
+        0,
+        0,
+        700,
+        515
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/props/complete_desk.tres",
+      "preview_width": 154,
+      "recommended_footprint_cells": [
+        4,
+        2
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "office_chair_front",
+      "label": "办公椅正面",
+      "category": "props",
+      "zone": "office",
+      "atlas": "assets/cozy_office/atlases/03-office.png",
+      "region": [
+        757,
+        95,
+        295,
+        386
+      ],
+      "search_rect": [
+        700,
+        0,
+        1100,
+        515
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/props/office_chair_front.tres",
+      "preview_width": 64,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "office_chair_back",
+      "label": "办公椅背面",
+      "category": "props",
+      "zone": "office",
+      "atlas": "assets/cozy_office/atlases/03-office.png",
+      "region": [
+        1177,
+        94,
+        296,
+        387
+      ],
+      "search_rect": [
+        1100,
+        0,
+        1536,
+        515
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/props/office_chair_back.tres",
+      "preview_width": 64,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "printer_cabinet",
+      "label": "打印机文件柜",
+      "category": "props",
+      "zone": "office",
+      "atlas": "assets/cozy_office/atlases/03-office.png",
+      "region": [
+        140,
+        572,
+        331,
+        352
+      ],
+      "search_rect": [
+        0,
+        515,
+        580,
+        1024
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/props/printer_cabinet.tres",
+      "preview_width": 91,
+      "recommended_footprint_cells": [
+        2,
+        2
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "server_rack",
+      "label": "服务器机柜",
+      "category": "props",
+      "zone": "office",
+      "atlas": "assets/cozy_office/atlases/03-office.png",
+      "region": [
+        698,
+        559,
+        207,
+        395
+      ],
+      "search_rect": [
+        580,
+        515,
+        1060,
+        1024
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/props/server_rack.tres",
+      "preview_width": 66,
+      "recommended_footprint_cells": [
+        2,
+        2
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "filing_cabinet",
+      "label": "书籍绿植文件柜",
+      "category": "props",
+      "zone": "office",
+      "atlas": "assets/cozy_office/atlases/03-office.png",
+      "region": [
+        1127,
+        548,
+        331,
+        405
+      ],
+      "search_rect": [
+        1060,
+        515,
+        1536,
+        1024
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/props/filing_cabinet.tres",
+      "preview_width": 84,
+      "recommended_footprint_cells": [
+        2,
+        2
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "kitchenette",
+      "label": "咖啡茶水柜",
+      "category": "props",
+      "zone": "tea",
+      "atlas": "assets/cozy_office/atlases/04-tea.png",
+      "region": [
+        72,
+        126,
+        733,
+        365
+      ],
+      "search_rect": [
+        0,
+        0,
+        835,
+        515
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/props/kitchenette.tres",
+      "preview_width": 205,
+      "recommended_footprint_cells": [
+        5,
+        2
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "water_dispenser",
+      "label": "饮水机",
+      "category": "props",
+      "zone": "tea",
+      "atlas": "assets/cozy_office/atlases/04-tea.png",
+      "region": [
+        892,
+        61,
+        164,
+        441
+      ],
+      "search_rect": [
+        835,
+        0,
+        1120,
+        515
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/props/water_dispenser.tres",
+      "preview_width": 43,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "fridge",
+      "label": "小冰箱",
+      "category": "props",
+      "zone": "tea",
+      "atlas": "assets/cozy_office/atlases/04-tea.png",
+      "region": [
+        1200,
+        129,
+        244,
+        371
+      ],
+      "search_rect": [
+        1120,
+        0,
+        1536,
+        515
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/props/fridge.tres",
+      "preview_width": 55,
+      "recommended_footprint_cells": [
+        2,
+        2
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "tea_shelf",
+      "label": "杯具与茶叶架",
+      "category": "props",
+      "zone": "tea",
+      "atlas": "assets/cozy_office/atlases/04-tea.png",
+      "region": [
+        98,
+        545,
+        457,
+        403
+      ],
+      "search_rect": [
+        0,
+        515,
+        600,
+        1024
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/props/tea_shelf.tres",
+      "preview_width": 130,
+      "recommended_footprint_cells": [
+        3,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "standing_table",
+      "label": "站立休息小圆桌",
+      "category": "props",
+      "zone": "tea",
+      "atlas": "assets/cozy_office/atlases/04-tea.png",
+      "region": [
+        664,
+        591,
+        319,
+        343
+      ],
+      "search_rect": [
+        600,
+        515,
+        1040,
+        1024
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/props/standing_table.tres",
+      "preview_width": 75,
+      "recommended_footprint_cells": [
+        2,
+        2
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "fern",
+      "label": "茶水间蕨类绿植",
+      "category": "props",
+      "zone": "tea",
+      "atlas": "assets/cozy_office/atlases/04-tea.png",
+      "region": [
+        1077,
+        552,
+        395,
+        388
+      ],
+      "search_rect": [
+        1040,
+        515,
+        1536,
+        1024
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/props/fern.tres",
+      "preview_width": 79,
+      "recommended_footprint_cells": [
+        2,
+        2
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "rust_sofa",
+      "label": "休息角暖棕沙发",
+      "category": "props",
+      "zone": "leisure",
+      "atlas": "assets/cozy_office/atlases/05-leisure.png",
+      "region": [
+        45,
+        125,
+        530,
+        297
+      ],
+      "search_rect": [
+        0,
+        0,
+        600,
+        452
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/props/rust_sofa.tres",
+      "preview_width": 187,
+      "recommended_footprint_cells": [
+        4,
+        2
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "aquarium_cabinet",
+      "label": "带底柜的鱼缸",
+      "category": "props",
+      "zone": "leisure",
+      "atlas": "assets/cozy_office/atlases/05-leisure.png",
+      "region": [
+        631,
+        25,
+        381,
+        416
+      ],
+      "search_rect": [
+        600,
+        0,
+        1040,
+        452
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/props/aquarium_cabinet.tres",
+      "preview_width": 115,
+      "recommended_footprint_cells": [
+        3,
+        2
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "round_tea_table",
+      "label": "休息角圆茶几",
+      "category": "props",
+      "zone": "leisure",
+      "atlas": "assets/cozy_office/atlases/05-leisure.png",
+      "region": [
+        1094,
+        142,
+        395,
+        280
+      ],
+      "search_rect": [
+        1040,
+        0,
+        1536,
+        452
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/props/round_tea_table.tres",
+      "preview_width": 85,
+      "recommended_footprint_cells": [
+        2,
+        2
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "green_armchair",
+      "label": "苔绿单人椅",
+      "category": "props",
+      "zone": "leisure",
+      "atlas": "assets/cozy_office/atlases/05-leisure.png",
+      "region": [
+        126,
+        545,
+        335,
+        349
+      ],
+      "search_rect": [
+        0,
+        452,
+        600,
+        1024
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/props/green_armchair.tres",
+      "preview_width": 87,
+      "recommended_footprint_cells": [
+        2,
+        2
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "bookcase",
+      "label": "开放书柜",
+      "category": "props",
+      "zone": "leisure",
+      "atlas": "assets/cozy_office/atlases/05-leisure.png",
+      "region": [
+        650,
+        459,
+        302,
+        462
+      ],
+      "search_rect": [
+        600,
+        452,
+        1040,
+        1024
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/props/bookcase.tres",
+      "preview_width": 95,
+      "recommended_footprint_cells": [
+        2,
+        2
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "floor_lamp",
+      "label": "暖光落地灯",
+      "category": "props",
+      "zone": "leisure",
+      "atlas": "assets/cozy_office/atlases/05-leisure.png",
+      "region": [
+        1206,
+        514,
+        149,
+        395
+      ],
+      "search_rect": [
+        1040,
+        452,
+        1536,
+        1024
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/props/floor_lamp.tres",
+      "preview_width": 41,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "meeting_table",
+      "label": "五人会议长桌",
+      "category": "props",
+      "zone": "meeting",
+      "atlas": "assets/cozy_office/atlases/06-meeting.png",
+      "region": [
+        55,
+        168,
+        672,
+        263
+      ],
+      "search_rect": [
+        0,
+        0,
+        780,
+        520
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/props/meeting_table.tres",
+      "preview_width": 310,
+      "recommended_footprint_cells": [
+        7,
+        3
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "meeting_chair_front",
+      "label": "会议椅正面",
+      "category": "props",
+      "zone": "meeting",
+      "atlas": "assets/cozy_office/atlases/06-meeting.png",
+      "region": [
+        843,
+        143,
+        234,
+        283
+      ],
+      "search_rect": [
+        780,
+        0,
+        1150,
+        520
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/props/meeting_chair_front.tres",
+      "preview_width": 67,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "meeting_chair_back",
+      "label": "会议椅背面",
+      "category": "props",
+      "zone": "meeting",
+      "atlas": "assets/cozy_office/atlases/06-meeting.png",
+      "region": [
+        1226,
+        145,
+        237,
+        254
+      ],
+      "search_rect": [
+        1150,
+        0,
+        1536,
+        520
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/props/meeting_chair_back.tres",
+      "preview_width": 67,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "whiteboard",
+      "label": "移动讨论白板",
+      "category": "props",
+      "zone": "meeting",
+      "atlas": "assets/cozy_office/atlases/06-meeting.png",
+      "region": [
+        52,
+        584,
+        582,
+        348
+      ],
+      "search_rect": [
+        0,
+        520,
+        650,
+        1024
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/props/whiteboard.tres",
+      "preview_width": 190,
+      "recommended_footprint_cells": [
+        4,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "projection_screen",
+      "label": "会议投影幕",
+      "category": "props",
+      "zone": "meeting",
+      "atlas": "assets/cozy_office/atlases/06-meeting.png",
+      "region": [
+        681,
+        572,
+        454,
+        328
+      ],
+      "search_rect": [
+        650,
+        520,
+        1160,
+        1024
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/props/projection_screen.tres",
+      "preview_width": 205,
+      "recommended_footprint_cells": [
+        5,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "meeting_plant",
+      "label": "会议室大绿植",
+      "category": "props",
+      "zone": "meeting",
+      "atlas": "assets/cozy_office/atlases/06-meeting.png",
+      "region": [
+        1183,
+        524,
+        294,
+        419
+      ],
+      "search_rect": [
+        1160,
+        520,
+        1536,
+        1024
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/props/meeting_plant.tres",
+      "preview_width": 88,
+      "recommended_footprint_cells": [
+        2,
+        2
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "empty_desk",
+      "label": "空桌面电脑桌",
+      "category": "props",
+      "zone": "components",
+      "atlas": "assets/cozy_office/atlases/14-components.png",
+      "region": [
+        50,
+        120,
+        434,
+        235
+      ],
+      "search_rect": [
+        0,
+        0,
+        500,
+        390
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/props/empty_desk.tres",
+      "preview_width": 154,
+      "recommended_footprint_cells": [
+        4,
+        2
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "monitor_front",
+      "label": "独立显示器正面",
+      "category": "props",
+      "zone": "components",
+      "atlas": "assets/cozy_office/atlases/14-components.png",
+      "region": [
+        514,
+        147,
+        261,
+        195
+      ],
+      "search_rect": [
+        500,
+        0,
+        790,
+        390
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/props/monitor_front.tres",
+      "preview_width": 61,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "monitor_back",
+      "label": "独立显示器背面",
+      "category": "props",
+      "zone": "components",
+      "atlas": "assets/cozy_office/atlases/14-components.png",
+      "region": [
+        805,
+        130,
+        237,
+        215
+      ],
+      "search_rect": [
+        790,
+        0,
+        1060,
+        390
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/props/monitor_back.tres",
+      "preview_width": 61,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "keyboard_mouse",
+      "label": "独立键盘与鼠标",
+      "category": "props",
+      "zone": "components",
+      "atlas": "assets/cozy_office/atlases/14-components.png",
+      "region": [
+        1081,
+        218,
+        311,
+        89
+      ],
+      "search_rect": [
+        1060,
+        0,
+        1448,
+        390
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/props/keyboard_mouse.tres",
+      "preview_width": 66,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "desk_lamp",
+      "label": "可调工作台灯",
+      "category": "props",
+      "zone": "components",
+      "atlas": "assets/cozy_office/atlases/14-components.png",
+      "region": [
+        110,
+        433,
+        215,
+        255
+      ],
+      "search_rect": [
+        0,
+        390,
+        365,
+        735
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/props/desk_lamp.tres",
+      "preview_width": 42,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "small_plant",
+      "label": "小型陶盆绿植",
+      "category": "props",
+      "zone": "components",
+      "atlas": "assets/cozy_office/atlases/14-components.png",
+      "region": [
+        471,
+        439,
+        223,
+        246
+      ],
+      "search_rect": [
+        365,
+        390,
+        725,
+        735
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/props/small_plant.tres",
+      "preview_width": 43,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "wall_clock",
+      "label": "圆形办公室挂钟",
+      "category": "props",
+      "zone": "components",
+      "atlas": "assets/cozy_office/atlases/14-components.png",
+      "region": [
+        787,
+        454,
+        219,
+        223
+      ],
+      "search_rect": [
+        725,
+        390,
+        1086,
+        735
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/props/wall_clock.tres",
+      "preview_width": 58,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "archive_boxes",
+      "label": "文件与快递纸箱",
+      "category": "props",
+      "zone": "components",
+      "atlas": "assets/cozy_office/atlases/14-components.png",
+      "region": [
+        1131,
+        453,
+        222,
+        231
+      ],
+      "search_rect": [
+        1086,
+        390,
+        1448,
+        735
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/props/archive_boxes.tres",
+      "preview_width": 70,
+      "recommended_footprint_cells": [
+        2,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "waste_bin",
+      "label": "办公室废纸篓",
+      "category": "props",
+      "zone": "components",
+      "atlas": "assets/cozy_office/atlases/14-components.png",
+      "region": [
+        88,
+        796,
+        161,
+        194
+      ],
+      "search_rect": [
+        0,
+        735,
+        310,
+        1086
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/props/waste_bin.tres",
+      "preview_width": 35,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "fabric_partition",
+      "label": "苔绿工位隔断",
+      "category": "props",
+      "zone": "components",
+      "atlas": "assets/cozy_office/atlases/14-components.png",
+      "region": [
+        342,
+        792,
+        367,
+        188
+      ],
+      "search_rect": [
+        310,
+        735,
+        725,
+        1086
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/props/fabric_partition.tres",
+      "preview_width": 120,
+      "recommended_footprint_cells": [
+        3,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "framed_picture",
+      "label": "木框风景装饰画",
+      "category": "props",
+      "zone": "components",
+      "atlas": "assets/cozy_office/atlases/14-components.png",
+      "region": [
+        770,
+        792,
+        264,
+        183
+      ],
+      "search_rect": [
+        725,
+        735,
+        1060,
+        1086
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/props/framed_picture.tres",
+      "preview_width": 101,
+      "recommended_footprint_cells": [
+        2,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "light_brick_panel",
+      "label": "奶油浅砖墙面",
+      "category": "props",
+      "zone": "components",
+      "atlas": "assets/cozy_office/atlases/14-components.png",
+      "region": [
+        1088,
+        766,
+        298,
+        222
+      ],
+      "search_rect": [
+        1060,
+        735,
+        1448,
+        1086
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/props/light_brick_panel.tres",
+      "preview_width": 120,
+      "recommended_footprint_cells": [
+        3,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "m3_walk_down_1",
+      "label": "M3 down 1",
+      "category": "characters",
+      "zone": "m3",
+      "atlas": "assets/cozy_office/atlases/07-m3.png",
+      "region": [
+        369,
+        16,
+        164,
+        299
+      ],
+      "search_rect": [
+        0,
+        0,
+        627,
+        317
+      ],
+      "margin": [
+        46,
+        18,
+        92,
+        21
+      ],
+      "resource": "assets/cozy_office/resources/characters/m3_walk_down_1.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false,
+      "canvas": [
+        256,
+        320
+      ]
+    },
+    {
+      "id": "m3_walk_down_2",
+      "label": "M3 down 2",
+      "category": "characters",
+      "zone": "m3",
+      "atlas": "assets/cozy_office/atlases/07-m3.png",
+      "region": [
+        715,
+        16,
+        169,
+        299
+      ],
+      "search_rect": [
+        627,
+        0,
+        1254,
+        317
+      ],
+      "margin": [
+        43,
+        18,
+        87,
+        21
+      ],
+      "resource": "assets/cozy_office/resources/characters/m3_walk_down_2.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false,
+      "canvas": [
+        256,
+        320
+      ]
+    },
+    {
+      "id": "m3_walk_up_1",
+      "label": "M3 up 1",
+      "category": "characters",
+      "zone": "m3",
+      "atlas": "assets/cozy_office/atlases/07-m3.png",
+      "region": [
+        368,
+        321,
+        168,
+        296
+      ],
+      "search_rect": [
+        0,
+        317,
+        627,
+        625
+      ],
+      "margin": [
+        44,
+        21,
+        88,
+        24
+      ],
+      "resource": "assets/cozy_office/resources/characters/m3_walk_up_1.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false,
+      "canvas": [
+        256,
+        320
+      ]
+    },
+    {
+      "id": "m3_walk_up_2",
+      "label": "M3 up 2",
+      "category": "characters",
+      "zone": "m3",
+      "atlas": "assets/cozy_office/atlases/07-m3.png",
+      "region": [
+        715,
+        321,
+        169,
+        297
+      ],
+      "search_rect": [
+        627,
+        317,
+        1254,
+        625
+      ],
+      "margin": [
+        43,
+        20,
+        87,
+        23
+      ],
+      "resource": "assets/cozy_office/resources/characters/m3_walk_up_2.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false,
+      "canvas": [
+        256,
+        320
+      ]
+    },
+    {
+      "id": "m3_walk_left_1",
+      "label": "M3 left 1",
+      "category": "characters",
+      "zone": "m3",
+      "atlas": "assets/cozy_office/atlases/07-m3.png",
+      "region": [
+        363,
+        633,
+        168,
+        292
+      ],
+      "search_rect": [
+        0,
+        625,
+        627,
+        931
+      ],
+      "margin": [
+        44,
+        25,
+        88,
+        28
+      ],
+      "resource": "assets/cozy_office/resources/characters/m3_walk_left_1.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false,
+      "canvas": [
+        256,
+        320
+      ]
+    },
+    {
+      "id": "m3_walk_left_2",
+      "label": "M3 left 2",
+      "category": "characters",
+      "zone": "m3",
+      "atlas": "assets/cozy_office/atlases/07-m3.png",
+      "region": [
+        716,
+        633,
+        166,
+        292
+      ],
+      "search_rect": [
+        627,
+        625,
+        1254,
+        931
+      ],
+      "margin": [
+        45,
+        25,
+        90,
+        28
+      ],
+      "resource": "assets/cozy_office/resources/characters/m3_walk_left_2.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false,
+      "canvas": [
+        256,
+        320
+      ]
+    },
+    {
+      "id": "m3_walk_right_1",
+      "label": "M3 right 1",
+      "category": "characters",
+      "zone": "m3",
+      "atlas": "assets/cozy_office/atlases/07-m3.png",
+      "region": [
+        367,
+        938,
+        166,
+        289
+      ],
+      "search_rect": [
+        0,
+        931,
+        627,
+        1254
+      ],
+      "margin": [
+        45,
+        28,
+        90,
+        31
+      ],
+      "resource": "assets/cozy_office/resources/characters/m3_walk_right_1.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false,
+      "canvas": [
+        256,
+        320
+      ]
+    },
+    {
+      "id": "m3_walk_right_2",
+      "label": "M3 right 2",
+      "category": "characters",
+      "zone": "m3",
+      "atlas": "assets/cozy_office/atlases/07-m3.png",
+      "region": [
+        718,
+        938,
+        164,
+        289
+      ],
+      "search_rect": [
+        627,
+        931,
+        1254,
+        1254
+      ],
+      "margin": [
+        46,
+        28,
+        92,
+        31
+      ],
+      "resource": "assets/cozy_office/resources/characters/m3_walk_right_2.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false,
+      "canvas": [
+        256,
+        320
+      ]
+    },
+    {
+      "id": "m3_anchor",
+      "label": "M3 正面锚点",
+      "category": "characters",
+      "zone": "m3",
+      "atlas": "assets/cozy_office/atlases/07-m3.png",
+      "region": [
+        369,
+        16,
+        164,
+        299
+      ],
+      "search_rect": [
+        0,
+        0,
+        627,
+        317
+      ],
+      "margin": [
+        46,
+        18,
+        92,
+        21
+      ],
+      "resource": "assets/cozy_office/resources/characters/m3_anchor.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false,
+      "canvas": [
+        256,
+        320
+      ]
+    },
+    {
+      "id": "m3_idle_1",
+      "label": "M3 待机 1",
+      "category": "characters",
+      "zone": "m3",
+      "atlas": "assets/cozy_office/atlases/07-m3.png",
+      "region": [
+        369,
+        16,
+        164,
+        299
+      ],
+      "search_rect": [
+        0,
+        0,
+        627,
+        317
+      ],
+      "margin": [
+        46,
+        18,
+        92,
+        21
+      ],
+      "resource": "assets/cozy_office/resources/characters/m3_idle_1.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false,
+      "canvas": [
+        256,
+        320
+      ]
+    },
+    {
+      "id": "m3_idle_2",
+      "label": "M3 待机 2",
+      "category": "characters",
+      "zone": "m3",
+      "atlas": "assets/cozy_office/atlases/07-m3.png",
+      "region": [
+        369,
+        16,
+        164,
+        299
+      ],
+      "search_rect": [
+        0,
+        0,
+        627,
+        317
+      ],
+      "margin": [
+        46,
+        21,
+        92,
+        21
+      ],
+      "resource": "assets/cozy_office/resources/characters/m3_idle_2.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false,
+      "canvas": [
+        256,
+        320
+      ],
+      "idle_display_shift_px": 0.96
+    },
+    {
+      "id": "m3_portrait",
+      "label": "M3 对话头像",
+      "category": "portraits",
+      "zone": "m3",
+      "atlas": "assets/cozy_office/atlases/07-m3.png",
+      "region": [
+        369,
+        16,
+        164,
+        194
+      ],
+      "search_rect": [
+        369,
+        16,
+        533,
+        210
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/portraits/m3_portrait.tres",
+      "preview_width": 64,
+      "recommended_footprint_cells": null,
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": true
+    },
+    {
+      "id": "flash_walk_down_1",
+      "label": "Flash down 1",
+      "category": "characters",
+      "zone": "flash",
+      "atlas": "assets/cozy_office/atlases/08-flash.png",
+      "region": [
+        351,
+        15,
+        157,
+        295
+      ],
+      "search_rect": [
+        0,
+        0,
+        627,
+        316
+      ],
+      "margin": [
+        49,
+        22,
+        99,
+        25
+      ],
+      "resource": "assets/cozy_office/resources/characters/flash_walk_down_1.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false,
+      "canvas": [
+        256,
+        320
+      ]
+    },
+    {
+      "id": "flash_walk_down_2",
+      "label": "Flash down 2",
+      "category": "characters",
+      "zone": "flash",
+      "atlas": "assets/cozy_office/atlases/08-flash.png",
+      "region": [
+        749,
+        15,
+        156,
+        295
+      ],
+      "search_rect": [
+        627,
+        0,
+        1254,
+        316
+      ],
+      "margin": [
+        50,
+        22,
+        100,
+        25
+      ],
+      "resource": "assets/cozy_office/resources/characters/flash_walk_down_2.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false,
+      "canvas": [
+        256,
+        320
+      ]
+    },
+    {
+      "id": "flash_walk_up_1",
+      "label": "Flash up 1",
+      "category": "characters",
+      "zone": "flash",
+      "atlas": "assets/cozy_office/atlases/08-flash.png",
+      "region": [
+        354,
+        322,
+        154,
+        291
+      ],
+      "search_rect": [
+        0,
+        316,
+        627,
+        619
+      ],
+      "margin": [
+        51,
+        26,
+        102,
+        29
+      ],
+      "resource": "assets/cozy_office/resources/characters/flash_walk_up_1.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false,
+      "canvas": [
+        256,
+        320
+      ]
+    },
+    {
+      "id": "flash_walk_up_2",
+      "label": "Flash up 2",
+      "category": "characters",
+      "zone": "flash",
+      "atlas": "assets/cozy_office/atlases/08-flash.png",
+      "region": [
+        746,
+        322,
+        153,
+        289
+      ],
+      "search_rect": [
+        627,
+        316,
+        1254,
+        619
+      ],
+      "margin": [
+        51,
+        28,
+        103,
+        31
+      ],
+      "resource": "assets/cozy_office/resources/characters/flash_walk_up_2.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false,
+      "canvas": [
+        256,
+        320
+      ]
+    },
+    {
+      "id": "flash_walk_left_1",
+      "label": "Flash left 1",
+      "category": "characters",
+      "zone": "flash",
+      "atlas": "assets/cozy_office/atlases/08-flash.png",
+      "region": [
+        328,
+        626,
+        171,
+        285
+      ],
+      "search_rect": [
+        0,
+        619,
+        627,
+        918
+      ],
+      "margin": [
+        42,
+        32,
+        85,
+        35
+      ],
+      "resource": "assets/cozy_office/resources/characters/flash_walk_left_1.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false,
+      "canvas": [
+        256,
+        320
+      ]
+    },
+    {
+      "id": "flash_walk_left_2",
+      "label": "Flash left 2",
+      "category": "characters",
+      "zone": "flash",
+      "atlas": "assets/cozy_office/atlases/08-flash.png",
+      "region": [
+        738,
+        626,
+        166,
+        285
+      ],
+      "search_rect": [
+        627,
+        619,
+        1254,
+        918
+      ],
+      "margin": [
+        45,
+        32,
+        90,
+        35
+      ],
+      "resource": "assets/cozy_office/resources/characters/flash_walk_left_2.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false,
+      "canvas": [
+        256,
+        320
+      ]
+    },
+    {
+      "id": "flash_walk_right_1",
+      "label": "Flash right 1",
+      "category": "characters",
+      "zone": "flash",
+      "atlas": "assets/cozy_office/atlases/08-flash.png",
+      "region": [
+        345,
+        927,
+        170,
+        285
+      ],
+      "search_rect": [
+        0,
+        918,
+        627,
+        1254
+      ],
+      "margin": [
+        43,
+        32,
+        86,
+        35
+      ],
+      "resource": "assets/cozy_office/resources/characters/flash_walk_right_1.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false,
+      "canvas": [
+        256,
+        320
+      ]
+    },
+    {
+      "id": "flash_walk_right_2",
+      "label": "Flash right 2",
+      "category": "characters",
+      "zone": "flash",
+      "atlas": "assets/cozy_office/atlases/08-flash.png",
+      "region": [
+        745,
+        926,
+        165,
+        286
+      ],
+      "search_rect": [
+        627,
+        918,
+        1254,
+        1254
+      ],
+      "margin": [
+        45,
+        31,
+        91,
+        34
+      ],
+      "resource": "assets/cozy_office/resources/characters/flash_walk_right_2.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false,
+      "canvas": [
+        256,
+        320
+      ]
+    },
+    {
+      "id": "flash_anchor",
+      "label": "Flash 正面锚点",
+      "category": "characters",
+      "zone": "flash",
+      "atlas": "assets/cozy_office/atlases/08-flash.png",
+      "region": [
+        351,
+        15,
+        157,
+        295
+      ],
+      "search_rect": [
+        0,
+        0,
+        627,
+        316
+      ],
+      "margin": [
+        49,
+        22,
+        99,
+        25
+      ],
+      "resource": "assets/cozy_office/resources/characters/flash_anchor.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false,
+      "canvas": [
+        256,
+        320
+      ]
+    },
+    {
+      "id": "flash_idle_1",
+      "label": "Flash 待机 1",
+      "category": "characters",
+      "zone": "flash",
+      "atlas": "assets/cozy_office/atlases/08-flash.png",
+      "region": [
+        351,
+        15,
+        157,
+        295
+      ],
+      "search_rect": [
+        0,
+        0,
+        627,
+        316
+      ],
+      "margin": [
+        49,
+        22,
+        99,
+        25
+      ],
+      "resource": "assets/cozy_office/resources/characters/flash_idle_1.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false,
+      "canvas": [
+        256,
+        320
+      ]
+    },
+    {
+      "id": "flash_idle_2",
+      "label": "Flash 待机 2",
+      "category": "characters",
+      "zone": "flash",
+      "atlas": "assets/cozy_office/atlases/08-flash.png",
+      "region": [
+        351,
+        15,
+        157,
+        295
+      ],
+      "search_rect": [
+        0,
+        0,
+        627,
+        316
+      ],
+      "margin": [
+        49,
+        25,
+        99,
+        25
+      ],
+      "resource": "assets/cozy_office/resources/characters/flash_idle_2.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false,
+      "canvas": [
+        256,
+        320
+      ],
+      "idle_display_shift_px": 0.96
+    },
+    {
+      "id": "flash_portrait",
+      "label": "Flash 对话头像",
+      "category": "portraits",
+      "zone": "flash",
+      "atlas": "assets/cozy_office/atlases/08-flash.png",
+      "region": [
+        351,
+        15,
+        157,
+        192
+      ],
+      "search_rect": [
+        351,
+        15,
+        508,
+        207
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/portraits/flash_portrait.tres",
+      "preview_width": 64,
+      "recommended_footprint_cells": null,
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": true
+    },
+    {
+      "id": "longcat_walk_down_1",
+      "label": "LongCat down 1",
+      "category": "characters",
+      "zone": "longcat",
+      "atlas": "assets/cozy_office/atlases/09-longcat.png",
+      "region": [
+        304,
+        18,
+        179,
+        290
+      ],
+      "search_rect": [
+        0,
+        0,
+        627,
+        315
+      ],
+      "margin": [
+        38,
+        27,
+        77,
+        30
+      ],
+      "resource": "assets/cozy_office/resources/characters/longcat_walk_down_1.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false,
+      "canvas": [
+        256,
+        320
+      ]
+    },
+    {
+      "id": "longcat_walk_down_2",
+      "label": "LongCat down 2",
+      "category": "characters",
+      "zone": "longcat",
+      "atlas": "assets/cozy_office/atlases/09-longcat.png",
+      "region": [
+        769,
+        18,
+        179,
+        290
+      ],
+      "search_rect": [
+        627,
+        0,
+        1254,
+        315
+      ],
+      "margin": [
+        38,
+        27,
+        77,
+        30
+      ],
+      "resource": "assets/cozy_office/resources/characters/longcat_walk_down_2.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false,
+      "canvas": [
+        256,
+        320
+      ]
+    },
+    {
+      "id": "longcat_walk_up_1",
+      "label": "LongCat up 1",
+      "category": "characters",
+      "zone": "longcat",
+      "atlas": "assets/cozy_office/atlases/09-longcat.png",
+      "region": [
+        308,
+        324,
+        181,
+        293
+      ],
+      "search_rect": [
+        0,
+        315,
+        627,
+        627
+      ],
+      "margin": [
+        37,
+        24,
+        75,
+        27
+      ],
+      "resource": "assets/cozy_office/resources/characters/longcat_walk_up_1.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false,
+      "canvas": [
+        256,
+        320
+      ]
+    },
+    {
+      "id": "longcat_walk_up_2",
+      "label": "LongCat up 2",
+      "category": "characters",
+      "zone": "longcat",
+      "atlas": "assets/cozy_office/atlases/09-longcat.png",
+      "region": [
+        769,
+        324,
+        175,
+        293
+      ],
+      "search_rect": [
+        627,
+        315,
+        1254,
+        627
+      ],
+      "margin": [
+        40,
+        24,
+        81,
+        27
+      ],
+      "resource": "assets/cozy_office/resources/characters/longcat_walk_up_2.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false,
+      "canvas": [
+        256,
+        320
+      ]
+    },
+    {
+      "id": "longcat_walk_left_1",
+      "label": "LongCat left 1",
+      "category": "characters",
+      "zone": "longcat",
+      "atlas": "assets/cozy_office/atlases/09-longcat.png",
+      "region": [
+        323,
+        637,
+        156,
+        284
+      ],
+      "search_rect": [
+        0,
+        627,
+        627,
+        932
+      ],
+      "margin": [
+        50,
+        33,
+        100,
+        36
+      ],
+      "resource": "assets/cozy_office/resources/characters/longcat_walk_left_1.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false,
+      "canvas": [
+        256,
+        320
+      ]
+    },
+    {
+      "id": "longcat_walk_left_2",
+      "label": "LongCat left 2",
+      "category": "characters",
+      "zone": "longcat",
+      "atlas": "assets/cozy_office/atlases/09-longcat.png",
+      "region": [
+        778,
+        638,
+        161,
+        283
+      ],
+      "search_rect": [
+        627,
+        627,
+        1254,
+        932
+      ],
+      "margin": [
+        47,
+        34,
+        95,
+        37
+      ],
+      "resource": "assets/cozy_office/resources/characters/longcat_walk_left_2.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false,
+      "canvas": [
+        256,
+        320
+      ]
+    },
+    {
+      "id": "longcat_walk_right_1",
+      "label": "LongCat right 1",
+      "category": "characters",
+      "zone": "longcat",
+      "atlas": "assets/cozy_office/atlases/09-longcat.png",
+      "region": [
+        322,
+        944,
+        156,
+        287
+      ],
+      "search_rect": [
+        0,
+        932,
+        627,
+        1254
+      ],
+      "margin": [
+        50,
+        30,
+        100,
+        33
+      ],
+      "resource": "assets/cozy_office/resources/characters/longcat_walk_right_1.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false,
+      "canvas": [
+        256,
+        320
+      ]
+    },
+    {
+      "id": "longcat_walk_right_2",
+      "label": "LongCat right 2",
+      "category": "characters",
+      "zone": "longcat",
+      "atlas": "assets/cozy_office/atlases/09-longcat.png",
+      "region": [
+        771,
+        944,
+        167,
+        287
+      ],
+      "search_rect": [
+        627,
+        932,
+        1254,
+        1254
+      ],
+      "margin": [
+        44,
+        30,
+        89,
+        33
+      ],
+      "resource": "assets/cozy_office/resources/characters/longcat_walk_right_2.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false,
+      "canvas": [
+        256,
+        320
+      ]
+    },
+    {
+      "id": "longcat_anchor",
+      "label": "LongCat 正面锚点",
+      "category": "characters",
+      "zone": "longcat",
+      "atlas": "assets/cozy_office/atlases/09-longcat.png",
+      "region": [
+        304,
+        18,
+        179,
+        290
+      ],
+      "search_rect": [
+        0,
+        0,
+        627,
+        315
+      ],
+      "margin": [
+        38,
+        27,
+        77,
+        30
+      ],
+      "resource": "assets/cozy_office/resources/characters/longcat_anchor.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false,
+      "canvas": [
+        256,
+        320
+      ]
+    },
+    {
+      "id": "longcat_idle_1",
+      "label": "LongCat 待机 1",
+      "category": "characters",
+      "zone": "longcat",
+      "atlas": "assets/cozy_office/atlases/09-longcat.png",
+      "region": [
+        304,
+        18,
+        179,
+        290
+      ],
+      "search_rect": [
+        0,
+        0,
+        627,
+        315
+      ],
+      "margin": [
+        38,
+        27,
+        77,
+        30
+      ],
+      "resource": "assets/cozy_office/resources/characters/longcat_idle_1.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false,
+      "canvas": [
+        256,
+        320
+      ]
+    },
+    {
+      "id": "longcat_idle_2",
+      "label": "LongCat 待机 2",
+      "category": "characters",
+      "zone": "longcat",
+      "atlas": "assets/cozy_office/atlases/09-longcat.png",
+      "region": [
+        304,
+        18,
+        179,
+        290
+      ],
+      "search_rect": [
+        0,
+        0,
+        627,
+        315
+      ],
+      "margin": [
+        38,
+        30,
+        77,
+        30
+      ],
+      "resource": "assets/cozy_office/resources/characters/longcat_idle_2.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false,
+      "canvas": [
+        256,
+        320
+      ],
+      "idle_display_shift_px": 0.96
+    },
+    {
+      "id": "longcat_portrait",
+      "label": "LongCat 对话头像",
+      "category": "portraits",
+      "zone": "longcat",
+      "atlas": "assets/cozy_office/atlases/09-longcat.png",
+      "region": [
+        304,
+        18,
+        179,
+        188
+      ],
+      "search_rect": [
+        304,
+        18,
+        483,
+        206
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/portraits/longcat_portrait.tres",
+      "preview_width": 64,
+      "recommended_footprint_cells": null,
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": true
+    },
+    {
+      "id": "kimi_walk_down_1",
+      "label": "Kimi down 1",
+      "category": "characters",
+      "zone": "kimi",
+      "atlas": "assets/cozy_office/atlases/10-kimi.png",
+      "region": [
+        381,
+        25,
+        154,
+        291
+      ],
+      "search_rect": [
+        0,
+        0,
+        627,
+        326
+      ],
+      "margin": [
+        51,
+        26,
+        102,
+        29
+      ],
+      "resource": "assets/cozy_office/resources/characters/kimi_walk_down_1.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false,
+      "canvas": [
+        256,
+        320
+      ]
+    },
+    {
+      "id": "kimi_walk_down_2",
+      "label": "Kimi down 2",
+      "category": "characters",
+      "zone": "kimi",
+      "atlas": "assets/cozy_office/atlases/10-kimi.png",
+      "region": [
+        721,
+        25,
+        158,
+        292
+      ],
+      "search_rect": [
+        627,
+        0,
+        1254,
+        326
+      ],
+      "margin": [
+        49,
+        25,
+        98,
+        28
+      ],
+      "resource": "assets/cozy_office/resources/characters/kimi_walk_down_2.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false,
+      "canvas": [
+        256,
+        320
+      ]
+    },
+    {
+      "id": "kimi_walk_up_1",
+      "label": "Kimi up 1",
+      "category": "characters",
+      "zone": "kimi",
+      "atlas": "assets/cozy_office/atlases/10-kimi.png",
+      "region": [
+        386,
+        337,
+        160,
+        283
+      ],
+      "search_rect": [
+        0,
+        326,
+        627,
+        625
+      ],
+      "margin": [
+        48,
+        34,
+        96,
+        37
+      ],
+      "resource": "assets/cozy_office/resources/characters/kimi_walk_up_1.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false,
+      "canvas": [
+        256,
+        320
+      ]
+    },
+    {
+      "id": "kimi_walk_up_2",
+      "label": "Kimi up 2",
+      "category": "characters",
+      "zone": "kimi",
+      "atlas": "assets/cozy_office/atlases/10-kimi.png",
+      "region": [
+        713,
+        337,
+        163,
+        284
+      ],
+      "search_rect": [
+        627,
+        326,
+        1254,
+        625
+      ],
+      "margin": [
+        46,
+        33,
+        93,
+        36
+      ],
+      "resource": "assets/cozy_office/resources/characters/kimi_walk_up_2.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false,
+      "canvas": [
+        256,
+        320
+      ]
+    },
+    {
+      "id": "kimi_walk_left_1",
+      "label": "Kimi left 1",
+      "category": "characters",
+      "zone": "kimi",
+      "atlas": "assets/cozy_office/atlases/10-kimi.png",
+      "region": [
+        379,
+        632,
+        182,
+        285
+      ],
+      "search_rect": [
+        0,
+        625,
+        627,
+        920
+      ],
+      "margin": [
+        37,
+        32,
+        74,
+        35
+      ],
+      "resource": "assets/cozy_office/resources/characters/kimi_walk_left_1.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false,
+      "canvas": [
+        256,
+        320
+      ]
+    },
+    {
+      "id": "kimi_walk_left_2",
+      "label": "Kimi left 2",
+      "category": "characters",
+      "zone": "kimi",
+      "atlas": "assets/cozy_office/atlases/10-kimi.png",
+      "region": [
+        708,
+        631,
+        183,
+        283
+      ],
+      "search_rect": [
+        627,
+        625,
+        1254,
+        920
+      ],
+      "margin": [
+        36,
+        34,
+        73,
+        37
+      ],
+      "resource": "assets/cozy_office/resources/characters/kimi_walk_left_2.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false,
+      "canvas": [
+        256,
+        320
+      ]
+    },
+    {
+      "id": "kimi_walk_right_1",
+      "label": "Kimi right 1",
+      "category": "characters",
+      "zone": "kimi",
+      "atlas": "assets/cozy_office/atlases/10-kimi.png",
+      "region": [
+        350,
+        928,
+        190,
+        281
+      ],
+      "search_rect": [
+        0,
+        920,
+        627,
+        1254
+      ],
+      "margin": [
+        33,
+        36,
+        66,
+        39
+      ],
+      "resource": "assets/cozy_office/resources/characters/kimi_walk_right_1.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false,
+      "canvas": [
+        256,
+        320
+      ]
+    },
+    {
+      "id": "kimi_walk_right_2",
+      "label": "Kimi right 2",
+      "category": "characters",
+      "zone": "kimi",
+      "atlas": "assets/cozy_office/atlases/10-kimi.png",
+      "region": [
+        681,
+        928,
+        187,
+        280
+      ],
+      "search_rect": [
+        627,
+        920,
+        1254,
+        1254
+      ],
+      "margin": [
+        34,
+        37,
+        69,
+        40
+      ],
+      "resource": "assets/cozy_office/resources/characters/kimi_walk_right_2.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false,
+      "canvas": [
+        256,
+        320
+      ]
+    },
+    {
+      "id": "kimi_anchor",
+      "label": "Kimi 正面锚点",
+      "category": "characters",
+      "zone": "kimi",
+      "atlas": "assets/cozy_office/atlases/10-kimi.png",
+      "region": [
+        381,
+        25,
+        154,
+        291
+      ],
+      "search_rect": [
+        0,
+        0,
+        627,
+        326
+      ],
+      "margin": [
+        51,
+        26,
+        102,
+        29
+      ],
+      "resource": "assets/cozy_office/resources/characters/kimi_anchor.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false,
+      "canvas": [
+        256,
+        320
+      ]
+    },
+    {
+      "id": "kimi_idle_1",
+      "label": "Kimi 待机 1",
+      "category": "characters",
+      "zone": "kimi",
+      "atlas": "assets/cozy_office/atlases/10-kimi.png",
+      "region": [
+        381,
+        25,
+        154,
+        291
+      ],
+      "search_rect": [
+        0,
+        0,
+        627,
+        326
+      ],
+      "margin": [
+        51,
+        26,
+        102,
+        29
+      ],
+      "resource": "assets/cozy_office/resources/characters/kimi_idle_1.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false,
+      "canvas": [
+        256,
+        320
+      ]
+    },
+    {
+      "id": "kimi_idle_2",
+      "label": "Kimi 待机 2",
+      "category": "characters",
+      "zone": "kimi",
+      "atlas": "assets/cozy_office/atlases/10-kimi.png",
+      "region": [
+        381,
+        25,
+        154,
+        291
+      ],
+      "search_rect": [
+        0,
+        0,
+        627,
+        326
+      ],
+      "margin": [
+        51,
+        29,
+        102,
+        29
+      ],
+      "resource": "assets/cozy_office/resources/characters/kimi_idle_2.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false,
+      "canvas": [
+        256,
+        320
+      ],
+      "idle_display_shift_px": 0.96
+    },
+    {
+      "id": "kimi_portrait",
+      "label": "Kimi 对话头像",
+      "category": "portraits",
+      "zone": "kimi",
+      "atlas": "assets/cozy_office/atlases/10-kimi.png",
+      "region": [
+        381,
+        25,
+        154,
+        189
+      ],
+      "search_rect": [
+        381,
+        25,
+        535,
+        214
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/portraits/kimi_portrait.tres",
+      "preview_width": 64,
+      "recommended_footprint_cells": null,
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": true
+    },
+    {
+      "id": "step5_walk_down_1",
+      "label": "Step5 down 1",
+      "category": "characters",
+      "zone": "step5",
+      "atlas": "assets/cozy_office/atlases/11-step5.png",
+      "region": [
+        303,
+        22,
+        187,
+        290
+      ],
+      "search_rect": [
+        0,
+        0,
+        627,
+        319
+      ],
+      "margin": [
+        34,
+        27,
+        69,
+        30
+      ],
+      "resource": "assets/cozy_office/resources/characters/step5_walk_down_1.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false,
+      "canvas": [
+        256,
+        320
+      ]
+    },
+    {
+      "id": "step5_walk_down_2",
+      "label": "Step5 down 2",
+      "category": "characters",
+      "zone": "step5",
+      "atlas": "assets/cozy_office/atlases/11-step5.png",
+      "region": [
+        767,
+        22,
+        184,
+        290
+      ],
+      "search_rect": [
+        627,
+        0,
+        1254,
+        319
+      ],
+      "margin": [
+        36,
+        27,
+        72,
+        30
+      ],
+      "resource": "assets/cozy_office/resources/characters/step5_walk_down_2.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false,
+      "canvas": [
+        256,
+        320
+      ]
+    },
+    {
+      "id": "step5_walk_up_1",
+      "label": "Step5 up 1",
+      "category": "characters",
+      "zone": "step5",
+      "atlas": "assets/cozy_office/atlases/11-step5.png",
+      "region": [
+        301,
+        329,
+        180,
+        293
+      ],
+      "search_rect": [
+        0,
+        319,
+        627,
+        628
+      ],
+      "margin": [
+        38,
+        24,
+        76,
+        27
+      ],
+      "resource": "assets/cozy_office/resources/characters/step5_walk_up_1.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false,
+      "canvas": [
+        256,
+        320
+      ]
+    },
+    {
+      "id": "step5_walk_up_2",
+      "label": "Step5 up 2",
+      "category": "characters",
+      "zone": "step5",
+      "atlas": "assets/cozy_office/atlases/11-step5.png",
+      "region": [
+        765,
+        327,
+        183,
+        294
+      ],
+      "search_rect": [
+        627,
+        319,
+        1254,
+        628
+      ],
+      "margin": [
+        36,
+        23,
+        73,
+        26
+      ],
+      "resource": "assets/cozy_office/resources/characters/step5_walk_up_2.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false,
+      "canvas": [
+        256,
+        320
+      ]
+    },
+    {
+      "id": "step5_walk_left_1",
+      "label": "Step5 left 1",
+      "category": "characters",
+      "zone": "step5",
+      "atlas": "assets/cozy_office/atlases/11-step5.png",
+      "region": [
+        319,
+        636,
+        171,
+        288
+      ],
+      "search_rect": [
+        0,
+        628,
+        627,
+        931
+      ],
+      "margin": [
+        42,
+        29,
+        85,
+        32
+      ],
+      "resource": "assets/cozy_office/resources/characters/step5_walk_left_1.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false,
+      "canvas": [
+        256,
+        320
+      ]
+    },
+    {
+      "id": "step5_walk_left_2",
+      "label": "Step5 left 2",
+      "category": "characters",
+      "zone": "step5",
+      "atlas": "assets/cozy_office/atlases/11-step5.png",
+      "region": [
+        784,
+        634,
+        159,
+        289
+      ],
+      "search_rect": [
+        627,
+        628,
+        1254,
+        931
+      ],
+      "margin": [
+        48,
+        28,
+        97,
+        31
+      ],
+      "resource": "assets/cozy_office/resources/characters/step5_walk_left_2.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false,
+      "canvas": [
+        256,
+        320
+      ]
+    },
+    {
+      "id": "step5_walk_right_1",
+      "label": "Step5 right 1",
+      "category": "characters",
+      "zone": "step5",
+      "atlas": "assets/cozy_office/atlases/11-step5.png",
+      "region": [
+        309,
+        940,
+        164,
+        291
+      ],
+      "search_rect": [
+        0,
+        931,
+        627,
+        1254
+      ],
+      "margin": [
+        46,
+        26,
+        92,
+        29
+      ],
+      "resource": "assets/cozy_office/resources/characters/step5_walk_right_1.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false,
+      "canvas": [
+        256,
+        320
+      ]
+    },
+    {
+      "id": "step5_walk_right_2",
+      "label": "Step5 right 2",
+      "category": "characters",
+      "zone": "step5",
+      "atlas": "assets/cozy_office/atlases/11-step5.png",
+      "region": [
+        767,
+        940,
+        164,
+        291
+      ],
+      "search_rect": [
+        627,
+        931,
+        1254,
+        1254
+      ],
+      "margin": [
+        46,
+        26,
+        92,
+        29
+      ],
+      "resource": "assets/cozy_office/resources/characters/step5_walk_right_2.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false,
+      "canvas": [
+        256,
+        320
+      ]
+    },
+    {
+      "id": "step5_anchor",
+      "label": "Step5 正面锚点",
+      "category": "characters",
+      "zone": "step5",
+      "atlas": "assets/cozy_office/atlases/11-step5.png",
+      "region": [
+        303,
+        22,
+        187,
+        290
+      ],
+      "search_rect": [
+        0,
+        0,
+        627,
+        319
+      ],
+      "margin": [
+        34,
+        27,
+        69,
+        30
+      ],
+      "resource": "assets/cozy_office/resources/characters/step5_anchor.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false,
+      "canvas": [
+        256,
+        320
+      ]
+    },
+    {
+      "id": "step5_idle_1",
+      "label": "Step5 待机 1",
+      "category": "characters",
+      "zone": "step5",
+      "atlas": "assets/cozy_office/atlases/11-step5.png",
+      "region": [
+        303,
+        22,
+        187,
+        290
+      ],
+      "search_rect": [
+        0,
+        0,
+        627,
+        319
+      ],
+      "margin": [
+        34,
+        27,
+        69,
+        30
+      ],
+      "resource": "assets/cozy_office/resources/characters/step5_idle_1.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false,
+      "canvas": [
+        256,
+        320
+      ]
+    },
+    {
+      "id": "step5_idle_2",
+      "label": "Step5 待机 2",
+      "category": "characters",
+      "zone": "step5",
+      "atlas": "assets/cozy_office/atlases/11-step5.png",
+      "region": [
+        303,
+        22,
+        187,
+        290
+      ],
+      "search_rect": [
+        0,
+        0,
+        627,
+        319
+      ],
+      "margin": [
+        34,
+        30,
+        69,
+        30
+      ],
+      "resource": "assets/cozy_office/resources/characters/step5_idle_2.tres",
+      "preview_width": 80,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false,
+      "canvas": [
+        256,
+        320
+      ],
+      "idle_display_shift_px": 0.96
+    },
+    {
+      "id": "step5_portrait",
+      "label": "Step5 对话头像",
+      "category": "portraits",
+      "zone": "step5",
+      "atlas": "assets/cozy_office/atlases/11-step5.png",
+      "region": [
+        303,
+        22,
+        187,
+        188
+      ],
+      "search_rect": [
+        303,
+        22,
+        490,
+        210
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/portraits/step5_portrait.tres",
+      "preview_width": 64,
+      "recommended_footprint_cells": null,
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": true
+    },
+    {
+      "id": "client_normal",
+      "label": "普通客户",
+      "category": "clients",
+      "zone": "lobby",
+      "atlas": "assets/cozy_office/atlases/12-clients.png",
+      "region": [
+        93,
+        95,
+        266,
+        574
+      ],
+      "search_rect": [
+        0,
+        0,
+        418,
+        685
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/clients/client_normal.tres",
+      "preview_width": 48,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "client_founder",
+      "label": "创业客户",
+      "category": "clients",
+      "zone": "lobby",
+      "atlas": "assets/cozy_office/atlases/12-clients.png",
+      "region": [
+        494,
+        95,
+        263,
+        581
+      ],
+      "search_rect": [
+        418,
+        0,
+        836,
+        685
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/clients/client_founder.tres",
+      "preview_width": 48,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "client_hard",
+      "label": "严格客户",
+      "category": "clients",
+      "zone": "lobby",
+      "atlas": "assets/cozy_office/atlases/12-clients.png",
+      "region": [
+        859,
+        102,
+        304,
+        567
+      ],
+      "search_rect": [
+        836,
+        0,
+        1254,
+        685
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/clients/client_hard.tres",
+      "preview_width": 48,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "client_geek",
+      "label": "技术客户",
+      "category": "clients",
+      "zone": "lobby",
+      "atlas": "assets/cozy_office/atlases/12-clients.png",
+      "region": [
+        99,
+        690,
+        255,
+        539
+      ],
+      "search_rect": [
+        0,
+        685,
+        418,
+        1254
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/clients/client_geek.tres",
+      "preview_width": 48,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "client_young",
+      "label": "年轻客户",
+      "category": "clients",
+      "zone": "lobby",
+      "atlas": "assets/cozy_office/atlases/12-clients.png",
+      "region": [
+        488,
+        707,
+        269,
+        522
+      ],
+      "search_rect": [
+        418,
+        685,
+        836,
+        1254
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/clients/client_young.tres",
+      "preview_width": 48,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "player_boss",
+      "label": "玩家老板",
+      "category": "clients",
+      "zone": "lobby",
+      "atlas": "assets/cozy_office/atlases/12-clients.png",
+      "region": [
+        875,
+        697,
+        273,
+        532
+      ],
+      "search_rect": [
+        836,
+        685,
+        1254,
+        1254
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/clients/player_boss.tres",
+      "preview_width": 48,
+      "recommended_footprint_cells": [
+        1,
+        1
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "panel",
+      "label": "木框深色面板",
+      "category": "ui",
+      "zone": "shared",
+      "atlas": "assets/cozy_office/atlases/13-ui.png",
+      "region": [
+        35,
+        83,
+        260,
+        237
+      ],
+      "search_rect": [
+        0,
+        0,
+        314,
+        350
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/ui/panel.tres",
+      "preview_width": 36,
+      "recommended_footprint_cells": null,
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "dialogue_bubble",
+      "label": "奶油色对话气泡",
+      "category": "ui",
+      "zone": "shared",
+      "atlas": "assets/cozy_office/atlases/13-ui.png",
+      "region": [
+        332,
+        112,
+        287,
+        198
+      ],
+      "search_rect": [
+        314,
+        0,
+        627,
+        350
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/ui/dialogue_bubble.tres",
+      "preview_width": 36,
+      "recommended_footprint_cells": null,
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "button_normal",
+      "label": "常态按钮",
+      "category": "ui",
+      "zone": "shared",
+      "atlas": "assets/cozy_office/atlases/13-ui.png",
+      "region": [
+        648,
+        158,
+        273,
+        135
+      ],
+      "search_rect": [
+        627,
+        0,
+        940,
+        350
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/ui/button_normal.tres",
+      "preview_width": 36,
+      "recommended_footprint_cells": null,
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "button_hover",
+      "label": "悬停按钮",
+      "category": "ui",
+      "zone": "shared",
+      "atlas": "assets/cozy_office/atlases/13-ui.png",
+      "region": [
+        965,
+        158,
+        265,
+        135
+      ],
+      "search_rect": [
+        940,
+        0,
+        1254,
+        350
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/ui/button_hover.tres",
+      "preview_width": 36,
+      "recommended_footprint_cells": null,
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "button_pressed",
+      "label": "按下按钮",
+      "category": "ui",
+      "zone": "shared",
+      "atlas": "assets/cozy_office/atlases/13-ui.png",
+      "region": [
+        33,
+        443,
+        264,
+        139
+      ],
+      "search_rect": [
+        0,
+        350,
+        314,
+        650
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/ui/button_pressed.tres",
+      "preview_width": 36,
+      "recommended_footprint_cells": null,
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "icon_money",
+      "label": "资金图标",
+      "category": "ui",
+      "zone": "shared",
+      "atlas": "assets/cozy_office/atlases/13-ui.png",
+      "region": [
+        363,
+        411,
+        230,
+        204
+      ],
+      "search_rect": [
+        314,
+        350,
+        627,
+        650
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/ui/icon_money.tres",
+      "preview_width": 36,
+      "recommended_footprint_cells": null,
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "icon_time",
+      "label": "时间图标",
+      "category": "ui",
+      "zone": "shared",
+      "atlas": "assets/cozy_office/atlases/13-ui.png",
+      "region": [
+        675,
+        401,
+        217,
+        217
+      ],
+      "search_rect": [
+        627,
+        350,
+        940,
+        650
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/ui/icon_time.tres",
+      "preview_width": 36,
+      "recommended_footprint_cells": null,
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "icon_reputation",
+      "label": "声誉图标",
+      "category": "ui",
+      "zone": "shared",
+      "atlas": "assets/cozy_office/atlases/13-ui.png",
+      "region": [
+        992,
+        390,
+        207,
+        241
+      ],
+      "search_rect": [
+        940,
+        350,
+        1254,
+        650
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/ui/icon_reputation.tres",
+      "preview_width": 36,
+      "recommended_footprint_cells": null,
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "icon_mood",
+      "label": "心情图标",
+      "category": "ui",
+      "zone": "shared",
+      "atlas": "assets/cozy_office/atlases/13-ui.png",
+      "region": [
+        62,
+        726,
+        202,
+        183
+      ],
+      "search_rect": [
+        0,
+        650,
+        314,
+        950
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/ui/icon_mood.tres",
+      "preview_width": 36,
+      "recommended_footprint_cells": null,
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "icon_stamina",
+      "label": "体力图标",
+      "category": "ui",
+      "zone": "shared",
+      "atlas": "assets/cozy_office/atlases/13-ui.png",
+      "region": [
+        398,
+        699,
+        168,
+        220
+      ],
+      "search_rect": [
+        314,
+        650,
+        627,
+        950
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/ui/icon_stamina.tres",
+      "preview_width": 36,
+      "recommended_footprint_cells": null,
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "icon_fatigue",
+      "label": "疲劳图标",
+      "category": "ui",
+      "zone": "shared",
+      "atlas": "assets/cozy_office/atlases/13-ui.png",
+      "region": [
+        683,
+        709,
+        195,
+        210
+      ],
+      "search_rect": [
+        627,
+        650,
+        940,
+        950
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/ui/icon_fatigue.tres",
+      "preview_width": 36,
+      "recommended_footprint_cells": null,
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "icon_client",
+      "label": "客户图标",
+      "category": "ui",
+      "zone": "shared",
+      "atlas": "assets/cozy_office/atlases/13-ui.png",
+      "region": [
+        1009,
+        710,
+        174,
+        209
+      ],
+      "search_rect": [
+        940,
+        650,
+        1254,
+        950
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/ui/icon_client.tres",
+      "preview_width": 36,
+      "recommended_footprint_cells": null,
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "icon_fame",
+      "label": "员工声望图标",
+      "category": "ui",
+      "zone": "shared",
+      "atlas": "assets/cozy_office/atlases/13-ui.png",
+      "region": [
+        59,
+        980,
+        198,
+        213
+      ],
+      "search_rect": [
+        0,
+        950,
+        314,
+        1254
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/ui/icon_fame.tres",
+      "preview_width": 36,
+      "recommended_footprint_cells": null,
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "progress_track",
+      "label": "进度槽",
+      "category": "ui",
+      "zone": "shared",
+      "atlas": "assets/cozy_office/atlases/13-ui.png",
+      "region": [
+        324,
+        1047,
+        293,
+        88
+      ],
+      "search_rect": [
+        314,
+        950,
+        627,
+        1254
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/ui/progress_track.tres",
+      "preview_width": 36,
+      "recommended_footprint_cells": null,
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "progress_fill",
+      "label": "进度条",
+      "category": "ui",
+      "zone": "shared",
+      "atlas": "assets/cozy_office/atlases/13-ui.png",
+      "region": [
+        637,
+        1048,
+        294,
+        88
+      ],
+      "search_rect": [
+        627,
+        950,
+        940,
+        1254
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/ui/progress_fill.tres",
+      "preview_width": 36,
+      "recommended_footprint_cells": null,
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "button_close",
+      "label": "关闭按钮",
+      "category": "ui",
+      "zone": "shared",
+      "atlas": "assets/cozy_office/atlases/13-ui.png",
+      "region": [
+        1004,
+        1004,
+        173,
+        173
+      ],
+      "search_rect": [
+        940,
+        950,
+        1254,
+        1254
+      ],
+      "margin": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resource": "assets/cozy_office/resources/ui/button_close.tres",
+      "preview_width": 36,
+      "recommended_footprint_cells": null,
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true,
+      "intentional_crop": false
+    },
+    {
+      "id": "m3_type_up_1",
+      "label": "m3 type_up 1",
+      "resource": "assets/cozy_office/resources/characters/m3_type_up_1.tres",
+      "atlas": "atlases/m3-activities.png",
+      "category": "characters",
+      "region": [
+        223,
+        48,
+        203,
+        316
+      ],
+      "margin": [
+        58,
+        121,
+        117,
+        124
+      ],
+      "canvas": [
+        320,
+        440
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true
+    },
+    {
+      "id": "m3_type_up_2",
+      "label": "m3 type_up 2",
+      "resource": "assets/cozy_office/resources/characters/m3_type_up_2.tres",
+      "atlas": "atlases/m3-activities.png",
+      "category": "characters",
+      "region": [
+        597,
+        48,
+        197,
+        316
+      ],
+      "margin": [
+        61,
+        121,
+        123,
+        124
+      ],
+      "canvas": [
+        320,
+        440
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true
+    },
+    {
+      "id": "m3_sit_down_1",
+      "label": "m3 sit_down 1",
+      "resource": "assets/cozy_office/resources/characters/m3_sit_down_1.tres",
+      "atlas": "atlases/m3-activities.png",
+      "category": "characters",
+      "region": [
+        242,
+        408,
+        184,
+        335
+      ],
+      "margin": [
+        68,
+        102,
+        136,
+        105
+      ],
+      "canvas": [
+        320,
+        440
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true
+    },
+    {
+      "id": "m3_sit_down_2",
+      "label": "m3 sit_down 2",
+      "resource": "assets/cozy_office/resources/characters/m3_sit_down_2.tres",
+      "atlas": "atlases/m3-activities.png",
+      "category": "characters",
+      "region": [
+        600,
+        408,
+        206,
+        335
+      ],
+      "margin": [
+        57,
+        102,
+        114,
+        105
+      ],
+      "canvas": [
+        320,
+        440
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true
+    },
+    {
+      "id": "m3_sit_up_1",
+      "label": "m3 sit_up 1",
+      "resource": "assets/cozy_office/resources/characters/m3_sit_up_1.tres",
+      "atlas": "atlases/m3-activities.png",
+      "category": "characters",
+      "region": [
+        240,
+        783,
+        186,
+        315
+      ],
+      "margin": [
+        67,
+        122,
+        134,
+        125
+      ],
+      "canvas": [
+        320,
+        440
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true
+    },
+    {
+      "id": "m3_sit_up_2",
+      "label": "m3 sit_up 2",
+      "resource": "assets/cozy_office/resources/characters/m3_sit_up_2.tres",
+      "atlas": "atlases/m3-activities.png",
+      "category": "characters",
+      "region": [
+        600,
+        783,
+        192,
+        315
+      ],
+      "margin": [
+        64,
+        122,
+        128,
+        125
+      ],
+      "canvas": [
+        320,
+        440
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true
+    },
+    {
+      "id": "m3_drink_down_1",
+      "label": "m3 drink_down 1",
+      "resource": "assets/cozy_office/resources/characters/m3_drink_down_1.tres",
+      "atlas": "atlases/m3-activities.png",
+      "category": "characters",
+      "region": [
+        238,
+        1127,
+        188,
+        361
+      ],
+      "margin": [
+        66,
+        76,
+        132,
+        79
+      ],
+      "canvas": [
+        320,
+        440
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true
+    },
+    {
+      "id": "m3_drink_down_2",
+      "label": "m3 drink_down 2",
+      "resource": "assets/cozy_office/resources/characters/m3_drink_down_2.tres",
+      "atlas": "atlases/m3-activities.png",
+      "category": "characters",
+      "region": [
+        591,
+        1127,
+        192,
+        361
+      ],
+      "margin": [
+        64,
+        76,
+        128,
+        79
+      ],
+      "canvas": [
+        320,
+        440
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true
+    },
+    {
+      "id": "flash_type_up_1",
+      "label": "flash type_up 1",
+      "resource": "assets/cozy_office/resources/characters/flash_type_up_1.tres",
+      "atlas": "atlases/flash-activities.png",
+      "category": "characters",
+      "region": [
+        245,
+        61,
+        194,
+        293
+      ],
+      "margin": [
+        63,
+        144,
+        126,
+        147
+      ],
+      "canvas": [
+        320,
+        440
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true
+    },
+    {
+      "id": "flash_type_up_2",
+      "label": "flash type_up 2",
+      "resource": "assets/cozy_office/resources/characters/flash_type_up_2.tres",
+      "atlas": "atlases/flash-activities.png",
+      "category": "characters",
+      "region": [
+        581,
+        61,
+        196,
+        293
+      ],
+      "margin": [
+        62,
+        144,
+        124,
+        147
+      ],
+      "canvas": [
+        320,
+        440
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true
+    },
+    {
+      "id": "flash_sit_down_1",
+      "label": "flash sit_down 1",
+      "resource": "assets/cozy_office/resources/characters/flash_sit_down_1.tres",
+      "atlas": "atlases/flash-activities.png",
+      "category": "characters",
+      "region": [
+        250,
+        401,
+        190,
+        323
+      ],
+      "margin": [
+        65,
+        114,
+        130,
+        117
+      ],
+      "canvas": [
+        320,
+        440
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true
+    },
+    {
+      "id": "flash_sit_down_2",
+      "label": "flash sit_down 2",
+      "resource": "assets/cozy_office/resources/characters/flash_sit_down_2.tres",
+      "atlas": "atlases/flash-activities.png",
+      "category": "characters",
+      "region": [
+        583,
+        401,
+        223,
+        323
+      ],
+      "margin": [
+        48,
+        114,
+        97,
+        117
+      ],
+      "canvas": [
+        320,
+        440
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true
+    },
+    {
+      "id": "flash_sit_up_1",
+      "label": "flash sit_up 1",
+      "resource": "assets/cozy_office/resources/characters/flash_sit_up_1.tres",
+      "atlas": "atlases/flash-activities.png",
+      "category": "characters",
+      "region": [
+        250,
+        776,
+        191,
+        306
+      ],
+      "margin": [
+        64,
+        131,
+        129,
+        134
+      ],
+      "canvas": [
+        320,
+        440
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true
+    },
+    {
+      "id": "flash_sit_up_2",
+      "label": "flash sit_up 2",
+      "resource": "assets/cozy_office/resources/characters/flash_sit_up_2.tres",
+      "atlas": "atlases/flash-activities.png",
+      "category": "characters",
+      "region": [
+        578,
+        776,
+        198,
+        306
+      ],
+      "margin": [
+        61,
+        131,
+        122,
+        134
+      ],
+      "canvas": [
+        320,
+        440
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true
+    },
+    {
+      "id": "flash_drink_down_1",
+      "label": "flash drink_down 1",
+      "resource": "assets/cozy_office/resources/characters/flash_drink_down_1.tres",
+      "atlas": "atlases/flash-activities.png",
+      "category": "characters",
+      "region": [
+        253,
+        1110,
+        188,
+        373
+      ],
+      "margin": [
+        66,
+        64,
+        132,
+        67
+      ],
+      "canvas": [
+        320,
+        440
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true
+    },
+    {
+      "id": "flash_drink_down_2",
+      "label": "flash drink_down 2",
+      "resource": "assets/cozy_office/resources/characters/flash_drink_down_2.tres",
+      "atlas": "atlases/flash-activities.png",
+      "category": "characters",
+      "region": [
+        584,
+        1110,
+        191,
+        373
+      ],
+      "margin": [
+        64,
+        64,
+        129,
+        67
+      ],
+      "canvas": [
+        320,
+        440
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true
+    },
+    {
+      "id": "longcat_type_up_1",
+      "label": "longcat type_up 1",
+      "resource": "assets/cozy_office/resources/characters/longcat_type_up_1.tres",
+      "atlas": "atlases/longcat-activities.png",
+      "category": "characters",
+      "region": [
+        201,
+        68,
+        221,
+        317
+      ],
+      "margin": [
+        49,
+        120,
+        99,
+        123
+      ],
+      "canvas": [
+        320,
+        440
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true
+    },
+    {
+      "id": "longcat_type_up_2",
+      "label": "longcat type_up 2",
+      "resource": "assets/cozy_office/resources/characters/longcat_type_up_2.tres",
+      "atlas": "atlases/longcat-activities.png",
+      "category": "characters",
+      "region": [
+        596,
+        68,
+        222,
+        317
+      ],
+      "margin": [
+        49,
+        120,
+        98,
+        123
+      ],
+      "canvas": [
+        320,
+        440
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true
+    },
+    {
+      "id": "longcat_sit_down_1",
+      "label": "longcat sit_down 1",
+      "resource": "assets/cozy_office/resources/characters/longcat_sit_down_1.tres",
+      "atlas": "atlases/longcat-activities.png",
+      "category": "characters",
+      "region": [
+        214,
+        409,
+        207,
+        335
+      ],
+      "margin": [
+        56,
+        102,
+        113,
+        105
+      ],
+      "canvas": [
+        320,
+        440
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true
+    },
+    {
+      "id": "longcat_sit_down_2",
+      "label": "longcat sit_down 2",
+      "resource": "assets/cozy_office/resources/characters/longcat_sit_down_2.tres",
+      "atlas": "atlases/longcat-activities.png",
+      "category": "characters",
+      "region": [
+        600,
+        409,
+        249,
+        335
+      ],
+      "margin": [
+        35,
+        102,
+        71,
+        105
+      ],
+      "canvas": [
+        320,
+        440
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true
+    },
+    {
+      "id": "longcat_sit_up_1",
+      "label": "longcat sit_up 1",
+      "resource": "assets/cozy_office/resources/characters/longcat_sit_up_1.tres",
+      "atlas": "atlases/longcat-activities.png",
+      "category": "characters",
+      "region": [
+        214,
+        782,
+        206,
+        312
+      ],
+      "margin": [
+        57,
+        125,
+        114,
+        128
+      ],
+      "canvas": [
+        320,
+        440
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true
+    },
+    {
+      "id": "longcat_sit_up_2",
+      "label": "longcat sit_up 2",
+      "resource": "assets/cozy_office/resources/characters/longcat_sit_up_2.tres",
+      "atlas": "atlases/longcat-activities.png",
+      "category": "characters",
+      "region": [
+        600,
+        782,
+        205,
+        312
+      ],
+      "margin": [
+        57,
+        125,
+        115,
+        128
+      ],
+      "canvas": [
+        320,
+        440
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true
+    },
+    {
+      "id": "longcat_drink_down_1",
+      "label": "longcat drink_down 1",
+      "resource": "assets/cozy_office/resources/characters/longcat_drink_down_1.tres",
+      "atlas": "atlases/longcat-activities.png",
+      "category": "characters",
+      "region": [
+        209,
+        1108,
+        221,
+        389
+      ],
+      "margin": [
+        49,
+        48,
+        99,
+        51
+      ],
+      "canvas": [
+        320,
+        440
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true
+    },
+    {
+      "id": "longcat_drink_down_2",
+      "label": "longcat drink_down 2",
+      "resource": "assets/cozy_office/resources/characters/longcat_drink_down_2.tres",
+      "atlas": "atlases/longcat-activities.png",
+      "category": "characters",
+      "region": [
+        595,
+        1108,
+        217,
+        389
+      ],
+      "margin": [
+        51,
+        48,
+        103,
+        51
+      ],
+      "canvas": [
+        320,
+        440
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true
+    },
+    {
+      "id": "kimi_type_up_1",
+      "label": "kimi type_up 1",
+      "resource": "assets/cozy_office/resources/characters/kimi_type_up_1.tres",
+      "atlas": "atlases/kimi-activities.png",
+      "category": "characters",
+      "region": [
+        248,
+        48,
+        199,
+        314
+      ],
+      "margin": [
+        60,
+        123,
+        121,
+        126
+      ],
+      "canvas": [
+        320,
+        440
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true
+    },
+    {
+      "id": "kimi_type_up_2",
+      "label": "kimi type_up 2",
+      "resource": "assets/cozy_office/resources/characters/kimi_type_up_2.tres",
+      "atlas": "atlases/kimi-activities.png",
+      "category": "characters",
+      "region": [
+        573,
+        48,
+        201,
+        314
+      ],
+      "margin": [
+        59,
+        123,
+        119,
+        126
+      ],
+      "canvas": [
+        320,
+        440
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true
+    },
+    {
+      "id": "kimi_sit_down_1",
+      "label": "kimi sit_down 1",
+      "resource": "assets/cozy_office/resources/characters/kimi_sit_down_1.tres",
+      "atlas": "atlases/kimi-activities.png",
+      "category": "characters",
+      "region": [
+        246,
+        388,
+        197,
+        330
+      ],
+      "margin": [
+        61,
+        107,
+        123,
+        110
+      ],
+      "canvas": [
+        320,
+        440
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true
+    },
+    {
+      "id": "kimi_sit_down_2",
+      "label": "kimi sit_down 2",
+      "resource": "assets/cozy_office/resources/characters/kimi_sit_down_2.tres",
+      "atlas": "atlases/kimi-activities.png",
+      "category": "characters",
+      "region": [
+        574,
+        388,
+        207,
+        330
+      ],
+      "margin": [
+        56,
+        107,
+        113,
+        110
+      ],
+      "canvas": [
+        320,
+        440
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true
+    },
+    {
+      "id": "kimi_sit_up_1",
+      "label": "kimi sit_up 1",
+      "resource": "assets/cozy_office/resources/characters/kimi_sit_up_1.tres",
+      "atlas": "atlases/kimi-activities.png",
+      "category": "characters",
+      "region": [
+        254,
+        744,
+        190,
+        313
+      ],
+      "margin": [
+        65,
+        124,
+        130,
+        127
+      ],
+      "canvas": [
+        320,
+        440
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true
+    },
+    {
+      "id": "kimi_sit_up_2",
+      "label": "kimi sit_up 2",
+      "resource": "assets/cozy_office/resources/characters/kimi_sit_up_2.tres",
+      "atlas": "atlases/kimi-activities.png",
+      "category": "characters",
+      "region": [
+        591,
+        744,
+        199,
+        313
+      ],
+      "margin": [
+        60,
+        124,
+        121,
+        127
+      ],
+      "canvas": [
+        320,
+        440
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true
+    },
+    {
+      "id": "kimi_drink_down_1",
+      "label": "kimi drink_down 1",
+      "resource": "assets/cozy_office/resources/characters/kimi_drink_down_1.tres",
+      "atlas": "atlases/kimi-activities.png",
+      "category": "characters",
+      "region": [
+        241,
+        1071,
+        206,
+        397
+      ],
+      "margin": [
+        57,
+        40,
+        114,
+        43
+      ],
+      "canvas": [
+        320,
+        440
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true
+    },
+    {
+      "id": "kimi_drink_down_2",
+      "label": "kimi drink_down 2",
+      "resource": "assets/cozy_office/resources/characters/kimi_drink_down_2.tres",
+      "atlas": "atlases/kimi-activities.png",
+      "category": "characters",
+      "region": [
+        570,
+        1071,
+        206,
+        397
+      ],
+      "margin": [
+        57,
+        40,
+        114,
+        43
+      ],
+      "canvas": [
+        320,
+        440
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true
+    },
+    {
+      "id": "step5_type_up_1",
+      "label": "step5 type_up 1",
+      "resource": "assets/cozy_office/resources/characters/step5_type_up_1.tres",
+      "atlas": "atlases/step5-activities.png",
+      "category": "characters",
+      "region": [
+        233,
+        72,
+        194,
+        297
+      ],
+      "margin": [
+        63,
+        140,
+        126,
+        143
+      ],
+      "canvas": [
+        320,
+        440
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true
+    },
+    {
+      "id": "step5_type_up_2",
+      "label": "step5 type_up 2",
+      "resource": "assets/cozy_office/resources/characters/step5_type_up_2.tres",
+      "atlas": "atlases/step5-activities.png",
+      "category": "characters",
+      "region": [
+        597,
+        72,
+        194,
+        297
+      ],
+      "margin": [
+        63,
+        140,
+        126,
+        143
+      ],
+      "canvas": [
+        320,
+        440
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true
+    },
+    {
+      "id": "step5_sit_down_1",
+      "label": "step5 sit_down 1",
+      "resource": "assets/cozy_office/resources/characters/step5_sit_down_1.tres",
+      "atlas": "atlases/step5-activities.png",
+      "category": "characters",
+      "region": [
+        236,
+        398,
+        197,
+        334
+      ],
+      "margin": [
+        61,
+        103,
+        123,
+        106
+      ],
+      "canvas": [
+        320,
+        440
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true
+    },
+    {
+      "id": "step5_sit_down_2",
+      "label": "step5 sit_down 2",
+      "resource": "assets/cozy_office/resources/characters/step5_sit_down_2.tres",
+      "atlas": "atlases/step5-activities.png",
+      "category": "characters",
+      "region": [
+        589,
+        398,
+        240,
+        334
+      ],
+      "margin": [
+        40,
+        103,
+        80,
+        106
+      ],
+      "canvas": [
+        320,
+        440
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true
+    },
+    {
+      "id": "step5_sit_up_1",
+      "label": "step5 sit_up 1",
+      "resource": "assets/cozy_office/resources/characters/step5_sit_up_1.tres",
+      "atlas": "atlases/step5-activities.png",
+      "category": "characters",
+      "region": [
+        242,
+        771,
+        185,
+        310
+      ],
+      "margin": [
+        67,
+        127,
+        135,
+        130
+      ],
+      "canvas": [
+        320,
+        440
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true
+    },
+    {
+      "id": "step5_sit_up_2",
+      "label": "step5 sit_up 2",
+      "resource": "assets/cozy_office/resources/characters/step5_sit_up_2.tres",
+      "atlas": "atlases/step5-activities.png",
+      "category": "characters",
+      "region": [
+        597,
+        771,
+        186,
+        310
+      ],
+      "margin": [
+        67,
+        127,
+        134,
+        130
+      ],
+      "canvas": [
+        320,
+        440
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true
+    },
+    {
+      "id": "step5_drink_down_1",
+      "label": "step5 drink_down 1",
+      "resource": "assets/cozy_office/resources/characters/step5_drink_down_1.tres",
+      "atlas": "atlases/step5-activities.png",
+      "category": "characters",
+      "region": [
+        230,
+        1104,
+        207,
+        387
+      ],
+      "margin": [
+        56,
+        50,
+        113,
+        53
+      ],
+      "canvas": [
+        320,
+        440
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true
+    },
+    {
+      "id": "step5_drink_down_2",
+      "label": "step5 drink_down 2",
+      "resource": "assets/cozy_office/resources/characters/step5_drink_down_2.tres",
+      "atlas": "atlases/step5-activities.png",
+      "category": "characters",
+      "region": [
+        589,
+        1104,
+        204,
+        387
+      ],
+      "margin": [
+        58,
+        50,
+        116,
+        53
+      ],
+      "canvas": [
+        320,
+        440
+      ],
+      "origin": "bottom_center",
+      "source_pixels_unchanged": true
+    }
+  ],
+  "rendering": {
+    "filter": "nearest",
+    "actor_canvas": [
+      256,
+      320
+    ],
+    "actor_foot_baseline": 317,
+    "actor_preview_scale": 0.32,
+    "alpha_cutoff_preview": 0.08,
+    "ui_panel_source_9slice_margins": [
+      40,
+      40,
+      40,
+      40
+    ],
+    "collision_footprints": "recommendations only; source map collision not changed",
+    "integration_path": "copy atlases/resources and update res paths if using a prefix"
+  }
+}

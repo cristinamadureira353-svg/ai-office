@@ -1,0 +1,31 @@
+name: Bug report / 问题反馈
+description: Report a reproducible game or MiniApp problem.
+body:
+  - type: markdown
+    attributes:
+      value: "请移除 API Key、真实对话、私人路径和存档内容。截图优先使用模拟局面。"
+  - type: input
+    id: version
+    attributes:
+      label: Game and MiniMax Code versions / 版本
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: OS and runtime / 系统及运行方式
+      placeholder: macOS, MiniApp / Godot editor / exported client
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction steps / 复现步骤
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: Expected and actual behavior / 预期与实际结果
+    validations:
+      required: true

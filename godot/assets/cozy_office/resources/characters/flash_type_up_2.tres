@@ -1,0 +1,9 @@
+[gd_resource type="AtlasTexture" load_steps=2 format=3]
+
+[ext_resource type="Texture2D" path="res://assets/cozy_office/atlases/flash-activities.png" id="1"]
+
+[resource]
+atlas = ExtResource("1")
+region = Rect2(581, 61, 196, 293)
+margin = Rect2(62, 144, 124, 147)
+filter_clip = true

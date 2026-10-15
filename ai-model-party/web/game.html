@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI 事务所</title>
+<style>
+  :root{--bg:#0d1117;--panel:#161b26;--line:#242c3b;--txt:#e8ecf4;--dim:#78849b;--gold:#ffd166;--red:#ff6b6b;--green:#06d6a0}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;
+       height:100vh;display:flex;flex-direction:column;overflow:hidden}
+
+  .hud{display:flex;align-items:center;gap:16px;padding:9px 16px;background:var(--panel);
+       border-bottom:1px solid var(--line);flex-shrink:0}
+  .hud .logo{font-weight:700;font-size:15px;letter-spacing:.5px}
+  .stat{font-size:12.5px;color:var(--dim)}
+  .stat b{color:var(--txt);font-size:14px;margin-left:4px;font-variant-numeric:tabular-nums}
+  .stat.money b{color:var(--gold)} .stat.rep b{color:var(--green)} .stat.day b{color:#7DC6FF}
+  .hud .sp{flex:1}
+  .btn{background:#2a3346;border:1px solid var(--line);color:var(--txt);padding:5px 12px;
+       border-radius:7px;font-size:12px;cursor:pointer;font-family:inherit}
+  .btn:hover{background:#35405a}
+  .btn.on{background:#3d6bd6;border-color:#3d6bd6}
+
+  .wrap{flex:1;display:flex;overflow:hidden}
+  .stage{flex:1;position:relative;overflow:hidden;background:#0a0d13}
+  canvas{display:block;width:100%;height:100%;image-rendering:pixelated}
+  .hint{position:absolute;left:12px;bottom:10px;color:var(--dim);font-size:11.5px;line-height:1.7;
+        background:rgba(13,17,23,.82);padding:7px 11px;border-radius:8px;border:1px solid var(--line)}
+
+  .side{width:310px;background:var(--panel);border-left:1px solid var(--line);
+        display:flex;flex-direction:column;overflow:hidden;flex-shrink:0}
+  .side h3{font-size:12px;color:var(--dim);padding:11px 14px 7px;font-weight:600;letter-spacing:.4px}
+  .list{flex:1;overflow-y:auto;padding:0 10px 10px}
+  .item{background:#1b2130;border:1px solid var(--line);border-radius:8px;padding:9px 11px;margin-bottom:7px;
+        font-size:12.5px;line-height:1.6}
+  .item.click{cursor:pointer}
+  .item.click:hover{border-color:#3d6bd6;background:#1f2637}
+  .item .top{display:flex;align-items:center;gap:7px;margin-bottom:4px}
+  .item .tag{font-size:10px;padding:1px 7px;border-radius:9px;font-weight:600}
+  .item .st{margin-left:auto;font-size:10.5px;color:var(--dim)}
+  .item .res{color:var(--dim);font-size:11.5px;margin-top:6px;max-height:120px;overflow-y:auto;
+             white-space:pre-wrap;line-height:1.65;background:#12161f;padding:7px 9px;border-radius:6px}
+  .bar{height:4px;background:#2a3142;border-radius:3px;overflow:hidden;margin-top:5px}
+  .bar i{display:block;height:100%;border-radius:3px;transition:width .3s}
+
+  .wbar{display:flex;align-items:center;gap:8px;padding:8px 11px;background:#1b2130;
+        border:1px solid var(--line);border-radius:8px;margin-bottom:7px;cursor:pointer;transition:.15s}
+  .wbar:hover{border-color:#3d6bd6}
+  .wbar.sel{border-color:var(--c);background:#1f2637}
+  .wbar .av{width:26px;height:26px;border-radius:6px;background:var(--c);flex-shrink:0;
+            display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#0d1117}
+  .wbar .info{flex:1;min-width:0}
+  .wbar .nm{font-size:12.5px;font-weight:600}
+  .wbar .ac{font-size:10.5px;color:var(--dim);margin-top:1px}
+  .wbar .meters{display:flex;flex-direction:column;gap:3px;width:52px;flex-shrink:0}
+  .meter{height:3px;background:#2a3142;border-radius:2px;overflow:hidden}
+  .meter i{display:block;height:100%}
+
+  .modal{position:absolute;inset:0;background:rgba(6,9,14,.75);display:none;
+         align-items:center;justify-content:center;z-index:20}
+  .modal.on{display:flex}
+  .box{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:19px;
+       max-width:520px;width:92%;max-height:82vh;overflow-y:auto;box-shadow:0 18px 50px rgba(0,0,0,.55)}
+  .box h2{font-size:15px;margin-bottom:5px}
+  .box p{font-size:12.5px;color:var(--dim);line-height:1.7;margin-bottom:13px}
+  .opts{display:flex;flex-direction:column;gap:7px}
+  .opt{display:flex;align-items:center;gap:10px;padding:9px 12px;background:#1b2130;
+       border:1px solid var(--line);border-radius:8px;cursor:pointer;font-size:12.5px;transition:.15s}
+  .opt:hover{border-color:#3d6bd6;background:#1f2637}
+  .opt .dot{width:9px;height:9px;border-radius:50%;background:var(--c);flex-shrink:0}
+  .opt .why{margin-left:auto;font-size:10.5px;color:var(--dim)}
+  .btns{display:flex;gap:8px;margin-top:14px}
+  .btns .btn{flex:1;padding:9px}
+  .btns .ok{background:#2f6f52;border-color:#2f6f52;color:#fff}
+  .btns .ok:hover{background:#3a8a66}
+  .btns .no{background:#7a3b3b;border-color:#7a3b3b;color:#fff}
+  .btns .no:hover{background:#934747}
+  .deliv{background:#12161f;border:1px solid var(--line);border-radius:8px;padding:11px 13px;
+         font-size:12.5px;line-height:1.75;white-space:pre-wrap;max-height:230px;overflow-y:auto;margin-bottom:12px}
+  .toast{position:absolute;left:50%;top:18px;transform:translateX(-50%);background:#1b2130;
+         border:1px solid var(--line);padding:9px 17px;border-radius:9px;font-size:12.5px;
+         z-index:30;display:none;box-shadow:0 8px 26px rgba(0,0,0,.5)}
+  .toast.on{display:block}
+  .evlog{position:absolute;right:12px;top:12px;width:210px;max-height:230px;overflow-y:auto;
+         background:rgba(13,17,23,.85);border:1px solid var(--line);border-radius:8px;padding:8px 10px;
+         font-size:11px;line-height:1.65}
+  .evlog div{color:var(--dim);margin-bottom:3px;padding-bottom:3px;border-bottom:1px solid rgba(36,44,59,.5)}
+  .evlog b{color:var(--txt)}
+</style>
+</head>
+<body>
+
+<div class="hud">
+  <div class="logo">AI 事务所</div>
+  <div class="stat day">第<b id="h-day">1</b>天</div>
+  <div class="stat">时间<b id="h-clock">09:00</b></div>
+  <div class="stat money">资金<b id="h-money">300</b></div>
+  <div class="stat rep">声誉<b id="h-rep">50</b></div>
+  <div class="sp"></div>
+  <button class="btn" id="btn-newday">过一天</button>
+  <button class="btn" id="btn-help">玩法</button>
+</div>
+
+<div class="wrap">
+  <div class="stage">
+    <canvas id="cv"></canvas>
+    <div class="evlog" id="evlog"></div>
+    <div class="hint">点<strong>角色</strong>下指令 · 点<strong>客户</strong>派单 · 点<strong>待验收</strong>的客户收货</div>
+    <div class="toast" id="toast"></div>
+  </div>
+
+  <div class="side">
+    <h3>我的团队</h3>
+    <div class="list" id="team"></div>
+    <h3>客户</h3>
+    <div class="list" id="clients" style="flex:1.1"></div>
+  </div>
+</div>
+
+<div class="modal" id="modal"><div class="box" id="mbox"></div></div>
+
+<script>
+const cv=document.getElementById('cv'), cx=cv.getContext('2d');
+let S=null, anim={}, sel=null, dragFrom=null;
+const C={m3:'#7DC6FF',flash:'#FFD166',longcat:'#06D6A0',kimi:'#B388FF',step5:'#FF6B6B'};
+
+/* ── 渲染 ── */
+function fit(){
+  const st=cv.parentElement.getBoundingClientRect();
+  const dpr=window.devicePixelRatio||1;
+  cv.width=st.width*dpr; cv.height=st.height*dpr;
+  cx.setTransform(dpr,0,0,dpr,0,0);
+  cx._w=st.width; cx._h=st.height;
+}
+window.addEventListener('resize',fit);
+
+function cell(){ return Math.min(cx._w/S.grid.w, cx._h/S.grid.h); }
+function pt(x,y){ const c=cell(); return [x*c, y*c]; }
+
+function draw(){
+  if(!S) return;
+  const c=cell(), W=cx._w, H=cx._h, ox=(W-S.grid.w*c)/2, oy=(H-S.grid.h*c)/2;
+  cx.clearRect(0,0,W,H);
+  cx.save(); cx.translate(ox,oy);
+
+  // 地板
+  cx.fillStyle='#131823'; cx.fillRect(0,0,S.grid.w*c,S.grid.h*c);
+  for(let y=0;y<S.grid.h;y++)for(let x=0;x<S.grid.w;x++){
+    if((x+y)%2){ cx.fillStyle='#161c28'; cx.fillRect(x*c,y*c,c,c); }
+  }
+  // 墙
+  cx.fillStyle='#2a3444';
+  for(const [x,y] of S.walls) cx.fillRect(x*c,y*c,c,c);
+  // 地点
+  const lw=Math.max(4,c*0.09);
+  for(const [k,[x,y]] of Object.entries(S.locations)){
+    const [px,py]=pt(x,y);
+    cx.fillStyle='#1d2troll'.slice(0,7); cx.fillStyle='#1d2536';
+    cx.fillRect(px-c*1.5,py-c*1.1,c*3,c*2.2);
+    cx.strokeStyle='rgba(61,107,214,.45)'; cx.lineWidth=lw;
+    cx.strokeRect(px-c*1.5,py-c*1.1,c*3,c*2.2);
+    cx.fillStyle='#8fa3c4'; cx.font=`${Math.max(9,c*0.42)}px -apple-system,PingFang SC`;
+    cx.textAlign='center'; cx.textBaseline='middle';
+    cx.fillText(S.loc_label[k], px, py);
+  }
+  // 接待位上的客户
+  const [rx,ry]=pt(S.locations.reception[0],S.locations.reception[1]);
+  for(const s of S.slots){
+    const cxx=rx, cyy=ry-c*1.1+(s+1)*c*1.5;
+    cx.fillStyle='#2c3a52'; cx.beginPath(); cx.arc(cxx,cyy,c*0.72,0,7); cx.fill();
+    cx.fillStyle='#ffd166'; cx.font=`${Math.max(8,c*0.4)}px sans-serif`;
+    cx.textAlign='center'; cx.textBaseline='middle'; cx.fillText('客',cxx,cyy);
+  }
+  // 角色
+  for(const w of S.workers){
+    let p=anim[w.who]||{x:w.x,y:w.y};
+    p.x+=(w.x-p.x)*0.28; p.y+=(w.y-p.y)*0.28; anim[w.who]=p;
+    const [px,py]=pt(p.x,p.y);
+    if(sel===w.who){ cx.strokeStyle=C[w.who]; cx.lineWidth=2;
+      cx.beginPath(); cx.arc(px,py,c*0.95,0,7); cx.stroke(); }
+    // 影子
+    cx.fillStyle='rgba(0,0,0,.32)';
+    cx.beginPath(); cx.ellipse(px,py+c*0.62,c*0.5,c*0.2,0,0,7); cx.fill();
+    // 身体
+    cx.fillStyle=C[w.who];
+    cx.beginPath(); cx.arc(px,py,c*0.55,0,7); cx.fill();
+    // 头
+    cx.fillStyle='#f0d9b5'; cx.beginPath(); cx.arc(px,py-c*0.42,c*0.3,0,7); cx.fill();
+    // 名字
+    cx.fillStyle='#0d1117'; cx.font=`bold ${Math.max(8,c*0.34)}px sans-serif`;
+    cx.textAlign='center'; cx.textBaseline='middle';
+    cx.fillText(w.name.slice(0,2), px, py+2);
+    // 状态
+    cx.fillStyle='#a9b6cc'; cx.font=`${Math.max(7,c*0.3)}px sans-serif`;
+    cx.fillText(w.acting.slice(0,6), px, py+c*0.95);
+  }
+  cx.restore();
+}
+
+/* ── 交互 ── */
+function pos(e){ const r=cv.getBoundingClientRect(); return [e.clientX-r.left, e.clientY-r.top]; }
+function gridOf(e){
+  const c=cell(), r=cv.getBoundingClientRect();
+  const [x,y]=pos(e);
+  const ox=(cx._w-S.grid.w*c)/2, oy=(cx._h-S.grid.h*c)/2;
+  return [ (x-ox)/c, (y-oy)/c ];
+}
+function hitClient(g){
+  if(!S) return null;
+  const c=cell(), r=cv.getBoundingClientRect();
+  const [x,y]=pos(e0);
+  return null;
+}
+cv.addEventListener('click', async ev=>{
+  if(!S) return;
+  const [gx,gy]=gridOf(ev);
+  // 先看是否点到角色
+  for(const w of S.workers){
+    if(Math.hypot(gx-w.x, gy-w.y)<1.0){ openWorkerMenu(w.who); return; }
+  }
+  // 再看客户
+  const c=cell();
+  const [rx,ry]=pt(S.locations.reception[0],S.locations.reception[1]);
+  const ox=(cx._w-S.grid.w*c)/2, oy=(cx._h-S.grid.h*c)/2;
+  const lx=(pos(ev)[0]-ox), ly=(pos(ev)[1]-oy);
+  for(const cl of S.clients){
+    const cxx=rx, cyy=ry-c*1.1+(cl.slot+1)*c*1.5;
+    if(Math.hypot(lx-cxx, ly-cyy)<c*0.9){ openClientMenu(cl); return; }
+  }
+  sel=null;
+});
+
+/* ── 弹窗 ── */
+function closeModal(){ document.getElementById('modal').classList.remove('on'); }
+function showModal(html){ document.getElementById('mbox').innerHTML=html;
+  document.getElementById('modal').classList.add('on'); }
+function toast(t){ const el=document.getElementById('toast'); el.textContent=t; el.classList.add('on');
+  clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('on'),1900); }
+
+const GO={'desk':'去工位干活','meeting':'去会议室','lounge':'去茶水间休息','slack':'去摸鱼角放空'};
+function openWorkerMenu(who){
+  sel=who;
+  const w=S.workers.find(x=>x.who===who);
+  let h=`<h2 style="color:${C[who]}">${w.name} · ${w.tag}</h2>
+    <p>${w.blurb}<br>当前：${w.acting} · 体力 ${w.stamina}/${w.stamina_max} · 心情 ${w.mood}${w.job?' · <b style="color:#ffd166">手上有活</b>':''}</p>
+    <div class="opts">`;
+  for(const [k,label] of Object.entries(GO)){
+    if(k==='slack' && ['m3','kimi'].includes(who)) continue;
+    h+=`<div class="opt" style="--c:${C[who]}" onclick="cmd('${who}','goto','${k}')">
+      <div class="dot"></div>${label}<div class="why">${
+        k==='lounge'?'恢复体力':k==='slack'?'恢复心情':k==='desk'?'恢复体力、干活':'见客户'}</div></div>`;
+  }
+  h+=`</div><div class="btns"><button class="btn" onclick="closeModal()">关掉</button></div>`;
+  showModal(h);
+}
+async function cmd(who,action,arg){
+  const r=await fetch('/api/command',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({who,action,arg})});
+  const j=await r.json();
+  toast(j.msg||'');
+  closeModal();
+}
+function openClientMenu(cl){
+  let h=`<h2>客户 · ${cl.status}</h2><p>「${cl.task}」<br>酬金 <b style="color:#ffd166">${cl.reward}</b> 元
+    · 耐心 ${cl.patience}/${cl.patience_max}</p>`;
+  if(cl.status==='待验收'){
+    h+=`<div class="deliv">${esc(cl.result||'（空）')}</div>
+      <p>这个活由 <b>${S.workers.find(w=>w.who===cl.served_by)?.name||'?'}</b> 交付。</p>
+      <div class="btns">
+        <button class="btn ok" onclick="doAccept('${cl.id}',true)">通过，收钱</button>
+        <button class="btn no" onclick="doAccept('${cl.id}',false)">打回，扣声誉</button>
+      </div>`;
+  } else if(cl.status==='等待'){
+    h+=`<div class="opts">`;
+    for(const w of S.workers){
+      const busy=w.job?'手上有活':'';
+      h+=`<div class="opt" style="--c:${C[w.who]}" onclick="cmd('${w.who}','assign','${cl.id}')">
+        <div class="dot"></div>派 ${w.name} 去接
+        <div class="why">质量 ${Math.round(w.quality*100)} · 速度 ${w.acting==='闲逛'?'待命':'忙碌'} ${busy}</div></div>`;
+    }
+    h+=`</div>`;
+  } else {
+    h+=`<p style="color:#78849b">${cl.status==='已流失'?'客户已经走了。':'处理中…'}</p>`;
+  }
+  showModal(h);
+}
+async function doAccept(cid,ok){
+  const r=await fetch('/api/accept',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({client:cid,approved:ok})});
+  const j=await r.json(); toast(j.msg||''); closeModal();
+}
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+document.getElementById('btn-newday').onclick=async()=>{
+  await fetch('/api/newday',{method:'POST'}); toast('新的一天'); };
+document.getElementById('btn-help').onclick=()=>{
+  showModal(`<h2>怎么玩</h2>
+  <p>你是个小老板，带着五个 AI 员工接客户的活。<br>
+  <b>客户会自己来</b>，每个都有酬金和耐心——等太久他们会走，扣声誉。<br>
+  <b>点客户</b>派谁去接，被派的会自己走过去、接单、走到工位干活、把交付物送回来。<br>
+  <b>点待验收的客户</b>验收：通过收钱加声誉，打回扣声誉。<br>
+  <b>点角色</b>可以随时干预：让他去休息、去摸鱼、去会议室。<br>
+  不干预的话，五个 AI 会用 Jev 自主决定去哪——他们会摸鱼、会串门、会抢活。</p>
+  <p>目标：资金和声誉别归零，活过更多天。</p>
+  <div class="btns"><button class="btn ok" onclick="closeModal()">知道了</button></div>`);
+};
+
+/* ── 侧栏 ── */
+function renderSide(){
+  document.getElementById('team').innerHTML=S.workers.map(w=>`
+    <div class="wbar ${sel===w.who?'sel':''}" style="--c:${C[w.who]}" onclick="openWorkerMenu('${w.who}')">
+      <div class="av">${w.name.slice(0,2)}</div>
+      <div class="info"><div class="nm">${w.name} <span style="color:${C[w.who]};font-size:10.5px">${w.tag}</span></div>
+        <div class="ac">${w.acting}</div>
+        <div class="bar"><i style="width:${w.stamina/w.stamina_max*100}%;background:${C[w.who]}"></i></div></div>
+      <div class="meters">
+        <div class="meter" title="体力"><i style="width:${w.stamina/w.stamina_max*100}%;background:#06d6a0"></i></div>
+        <div class="meter" title="心情"><i style="width:${w.mood}%;background:#ffd166"></i></div>
+      </div>
+    </div>`).join('');
+  document.getElementById('clients').innerHTML=S.clients.length?S.clients.map(c=>{
+    const w=S.workers.find(x=>x.who===c.served_by);
+    const col={'等待':'#ffd166','服务中':'#7DC6FF','待验收':'#06d6a0','已完成':'#78849b','已流失':'#ff6b6b'}[c.status];
+    return `<div class="item click" onclick='openClientMenu(${JSON.stringify(c).replace(/"/g,"&quot;")})'>
+      <div class="top"><span class="tag" style="color:${col};background:${col}22">${c.status}</span>
+        <span style="color:#ffd166">${c.reward}元</span>
+        <span class="st">${w?w.name:'—'} · 耐心${c.patience}</span></div>
+      <div>「${esc(c.task)}」</div>
+      ${c.result?`<div class="res">${esc(c.result.slice(0,180))}</div>`:''}
+    </div>`;}).join('') : '<div style="color:#78849b;font-size:12px;padding:8px">暂无客户，等一会儿…</div>';
+  document.getElementById('evlog').innerHTML=S.events.slice(-9).reverse()
+    .map(e=>`<div><b>${esc((e.text||'').slice(0,26))}</b></div>`).join('');
+}
+
+/* ── 轮询 ── */
+async function poll(){
+  try{
+    S=await (await fetch('/api/state')).json();
+    document.getElementById('h-day').textContent=S.day;
+    document.getElementById('h-clock').textContent=S.clock;
+    document.getElementById('h-money').textContent=S.money;
+    document.getElementById('h-rep').textContent=S.rep;
+    if(!cv._w) fit();
+    draw(); renderSide();
+  }catch(_){}
+}
+setInterval(poll, 400);
+poll();
+</script>
+</body>
+</html>

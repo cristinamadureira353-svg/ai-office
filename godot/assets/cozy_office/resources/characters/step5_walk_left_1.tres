@@ -1,0 +1,9 @@
+[gd_resource type="AtlasTexture" load_steps=2 format=3]
+
+[ext_resource type="Texture2D" path="res://assets/cozy_office/atlases/11-step5.png" id="1"]
+
+[resource]
+atlas = ExtResource("1")
+region = Rect2(319, 636, 171, 288)
+margin = Rect2(42, 29, 85, 32)
+filter_clip = true

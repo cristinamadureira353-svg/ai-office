@@ -1,0 +1,48 @@
+; AI 事务所 — Godot 项目配置
+; 手写生成，不依赖编辑器
+config_version=5
+
+[application]
+
+config/name="AI 事务所"
+config/description="你是个小老板，带着五个不省心的 AI 员工开事务所。"
+run/main_scene="res://scenes/main.tscn"
+config/features=PackedStringArray("4.4", "GL Compatibility")
+
+[autoload]
+
+WebFont="*res://scripts/web_font.gd"
+
+; ★M4-1：音频必须挂 /root 才跨场景存活。
+;   挂在场景里的话，切到复盘会/结算面板时 AudioStreamPlayer 跟着场景树
+;   一起释放，音乐会当场断掉——而设计稿明确要求"场景切换时 BGM 不停"。
+Audio="*res://scripts/audio.gd"
+
+[display]
+
+window/size/viewport_width=1120
+window/size/viewport_height=720
+window/size/window_width_override=1280
+window/size/window_height_override=800
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+; 0 = Nearest，像素风必需。用 1(Linear) 会让像素图糊掉
+textures/canvas_textures/default_texture_filter=0
+; M4-5：导出 macOS universal/arm64 必须开 ETC2 ASTC，否则 Godot 直接拒绝导出
+; （"请在项目设置中启用 渲染 > 纹理 > VRAM 压缩 > 导入 ETC2 ASTC"）。
+; 报错指向项目设置而不是导出预设——只改 export_presets.cfg 不管用。
+textures/vram_compression/import_etc2_astc=true
+environment/defaults/default_clear_color=Color(0.16, 0.12, 0.09, 1)
+
+[network]
+
+limits/http_client/max_connections=32
+
+[debug]
+
+gdscript/warnings/untyped_declaration=0

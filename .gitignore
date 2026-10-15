@@ -1,0 +1,30 @@
+# Local credentials and player data
+.env
+.env.*
+!.env.example
+**/settings.json
+**/data/saves/
+
+# Dependencies, engine imports, build products and local evidence
+**/.venv/
+**/venv/
+**/node_modules/
+**/__pycache__/
+*.py[cod]
+**/.godot/
+*.import
+build/
+dist/
+**/build/
+**/art/
+*.log
+*.zip
+*.pck
+*.wasm
+*.app/
+*.exe
+*.raw
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

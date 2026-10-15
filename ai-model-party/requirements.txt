@@ -1,0 +1,13 @@
+# AI 事务所 · 后端依赖
+#
+# ★这个文件是 M4-5 打包的必需品：启动器首跑会执行
+#   `python -m pip install -r requirements.txt`，
+#   文件不存在的话首跑必然失败。
+#   （我第一次打包时它就不存在，安全测试第 6 条直接把它抓出来了。）
+
+Flask>=3.0,<4.0
+requests>=2.31
+python-dotenv>=1.0
+
+# Werkzeug 是 Flask 的依赖，锁一下大版本免得装到不兼容的
+Werkzeug>=3.0,<4.0

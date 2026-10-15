@@ -1,0 +1,13 @@
+{
+  "name": "ai-office-development",
+  "version": "0.5.10",
+  "private": true,
+  "license": "MIT",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "check": "python tools/check.py",
+    "check:godot": "python tools/check.py --godot",
+    "test:miniapp": "python tools/test_miniapp.py"
+  },
+  "devDependencies": { "playwright": "1.62.1" }
+}
