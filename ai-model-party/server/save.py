@@ -150,7 +150,7 @@ def restore(game, d) -> dict:
     位置/路径再算一遍，读档等于没读。
     """
     import relations as REL
-    from game import Worker, Client, nearest_passable
+    from game import Worker, nearest_passable
     if not isinstance(d, dict) or "format" not in d:
         return {"ok": False, "msg": "这不是一个存档文件"}
     try:
@@ -194,38 +194,45 @@ def restore(game, d) -> dict:
                 game._freeze_brain(w)
             game.workers[w.who] = w
 
+        # 旧存档里可能带客户数据；经营玩法已停用（命令即工单），读档时一律清空，不让关闸失效。
         game.clients = []
-        for cd in d.get("clients", []):
-            c = Client(cd["task"], cd["reward"], cd["patience_max"],
-                       cd.get("kind", "document"))
-            c.id = cd["id"]
-            c.kind = cd.get("kind", "document")
-            c.persona = cd.get("persona", "normal")
-            c.patience = cd["patience"]
-            c.slot = cd.get("slot")
-            c.served_by = cd.get("served_by")
-            c.status = cd.get("status", "等待")
-            c.result = cd.get("result", "")
-            c.grab_tick = cd.get("grab_tick", 10 ** 9)
-            c.pos = tuple(cd.get("pos", (2, 12)))
-            game.clients.append(c)
         game.finished = []
-        for cd in d.get("finished", []):
-            c = Client(cd["task"], cd["reward"], cd["patience_max"],
-                       cd.get("kind", "document"))
-            c.id = cd["id"]
-            c.status = cd.get("status", "已完成")
-            c.result = cd.get("result", "")
-            c.served_by = cd.get("served_by")
-            game.finished.append(c)
-
-        by_id = {c.id: c for c in game.clients}
         game.slots = {}
-        for k, v in (d.get("slots") or {}).items():
-            # 找不到对应客户（存档自相矛盾）就跳过，不能让 slots 指向空气
-            if v in by_id:
-                game.slots[int(k)] = by_id[v]
+
+        # ★客户没了，员工"手上有活"的状态必须一起清掉，否则人会被永久卡死。
+        #   job 存的是"我正在给哪个客户干活"（一个 client id，见 game.py Worker.__init__）。
+        #   客户被清空后这个 id 指向一个**不存在的客户**，而主循环里 w.job 是一路闸门：
+        #   不接新单（_auto_grab 只挑 w.job 为空的）、不空闲（_wander_idle 跳过有活的人）、
+        #   连"活干完了"的通知也找不到对应客户 —— 表现就是站在工位上一动不动，像卡死。
+        for w in game.workers.values():
+            # 去接待处的指令也是指认某个客户的（玩家只能下工位/茶水间/摸鱼/会议室，
+            # 接待处只有接单/送单流程会去）。客户没了，这个目标就不存在了，指令要撤。
+            to_reception = (w.order and w.order[0] == "goto" and w.order[1]
+                            and w.order[1][0] == "reception")
+            if w.job is None and not to_reception:
+                continue
+            if w.job is not None:
+                # job：这单活指向的客户已经不存在了，作废，否则这个人永远"有活"。
+                w.job = None
+                # working：这一单已干的秒数，跟着这单一起作废。
+                w.working = 0
+                # need：这一单需要的有效工时，没有单了就不需要。
+                w.need = 0
+                # busy：正忙标志是跟着这单设的，单没了就不忙了。
+                w.busy = False
+                # eff：这单开工时的效率（受体力影响），下一单会重新算。
+                w.eff = 1.0
+            if to_reception:
+                # order：去接待处的指令是为接/送这个客户下的，客户没了就不用去了。
+                w.order = None
+            # 状态标签同步：原来写着"干活中/去接待处"，现在没人可服务了。
+            # 宕机的照旧显示"脑袋宕机了"，离职的照旧显示"已离职"。
+            if not w.brain_down and not w.quit:
+                w.acting = "在工位待命"
+
+        by_id = {c.id: c for c in game.clients}   # 客户已清空 ⇒ by_id 必为空
         # 旧档只存订单 ID，不能恢复成 None；那会让整个 /api/state 崩溃。
+        # 冲突以客户为键，客户没了 ⇒ 旧冲突一条也回不来（下面循环里 c 恒为 None）。
         game.conflicts = {}
         conflict_data = d.get("conflict_data")
         conflict_data = conflict_data if isinstance(conflict_data, dict) else {}
@@ -280,8 +287,12 @@ def restore(game, d) -> dict:
                 if not w.brain_down and not w.quit:
                     w.acting = "在工位待命"
         REL.from_dict(d.get("relations") or {})
-        game._cf_store = {_str_key_to_tuple(k): v
-                          for k, v in (d.get("cf_store") or {}).items()}
+        # 冲突冷却表里 ("client", 客户id) 这一类键指的是已经不存在的客户，
+        # 读档不再保留这种悬空引用；员工之间的对撞冷却和全局冷却照旧。
+        cf_store = {_str_key_to_tuple(k): v
+                    for k, v in (d.get("cf_store") or {}).items()}
+        game._cf_store = {k: v for k, v in cf_store.items()
+                          if not (isinstance(k, tuple) and k and k[0] == "client")}
         game._bt_store = {_str_key_to_tuple(k): v
                           for k, v in (d.get("bt_store") or {}).items()}
         game._blame_store = dict(d.get("blame_store") or {})

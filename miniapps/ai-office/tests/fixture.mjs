@@ -102,13 +102,69 @@ runpy.run_path(str(bridge), run_name='__main__')
   const logs = [], signal = new AbortController();
   const logger = Object.fromEntries(['info','debug','warn','error'].map(level => [level, message => logs.push(message)]));
   const module = await import(pathToFileURL(process.env.AI_OFFICE_TEST_SERVER || join(pluginRoot, 'miniapp/node/server.mjs')));
-  const context = { pluginId:'ai-office', pluginRoot, dataDir, listen, logger, signal:signal.signal };
+  // Bot 引擎用的模拟 Agent：不联网、不调用真实模型，回复固定。
+  // gate 用来把某次运行"卡住"在 turn.started 之后，好让画面里出现真实的 running/queued。
+  const agentRuns = [];
+  let gateClosed = false;
+  let gateWaiters = [];
+  const gate = {
+    close() { gateClosed = true; },
+    open() {
+      gateClosed = false;
+      const waiters = gateWaiters;
+      gateWaiters = [];
+      for (const release of waiters) release();
+    },
+    get closed() { return gateClosed; },
+  };
+  const agent = {
+    async models() { return { models: [], default: { providerId: 'mock', modelId: 'mock-model' } }; },
+    async run(input, options) {
+      agentRuns.push({ text: input.text, sessionId: input.sessionId ?? null });
+      const sessionId = input.sessionId ?? ('session-mock-' + agentRuns.length);
+      const turnId = 'turn-mock-' + agentRuns.length;
+      const reply = '（模拟回复）' + String(input.text ?? '').slice(0, 20);
+      options?.onEvent?.({ type: 'turn.started', sessionId, turnId, model: { providerId: 'mock', modelId: 'mock-model' } });
+      if (gateClosed) {
+        await new Promise((release) => gateWaiters.push(release));
+      }
+      options?.onEvent?.({ type: 'text.delta', sessionId, turnId, text: reply });
+      options?.onEvent?.({ type: 'message.committed', sessionId, turnId, text: reply });
+      options?.onEvent?.({ type: 'turn.finished', sessionId, turnId, status: 'finished', text: reply });
+      return { sessionId, turnId, status: 'finished', text: reply };
+    },
+    async reply() {},
+    async answer() { return { sessionId: 'session-mock', status: 'finished', text: '（模拟回答）' }; },
+  };
+  const context = { pluginId:'ai-office', pluginRoot, dataDir, listen, logger, signal:signal.signal, agent };
   let runtime = await module.start(context);
   const base = 'http://' + listen.host + ':' + listen.port;
   const settings = { pythonPath, envFile, initialSave };
   const get = async path => (await fetch(base + path)).json();
   const post = (path, body) => fetch(base + path, { method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify(body) });
-  return { pluginRoot, scratch, dataDir, base, settings, get, post, logs,
+  const put = (path, body) => fetch(base + path, { method:'PUT', headers:{'content-type':'application/json'}, body:JSON.stringify(body) });
+  const getText = async path => (await fetch(base + path)).text();
+  /** 打开 MCP 会话，返回一个可直接调团队工具的 call(name, args)。 */
+  const mcp = async () => {
+    const init = await fetch(base + '/mcp/minimax-bot', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', accept: 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18' } }),
+    });
+    const sessionId = init.headers.get('mcp-session-id');
+    return async (name, args) => {
+      const response = await fetch(base + '/mcp/minimax-bot', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', accept: 'application/json', 'mcp-session-id': sessionId },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name, arguments: args } }),
+      });
+      const payload = await response.json();
+      if (payload.result?.isError) throw new Error(name + ' failed: ' + payload.result.content[0].text);
+      return JSON.parse(payload.result.content[0].text);
+    };
+  };
+  const panel = async () => (await get('/api/office/panel')).bot_panel;
+  return { pluginRoot, scratch, dataDir, base, settings, get, post, put, getText, logs, agent, agentRuns, gate, mcp, panel,
     async resetConflict() {
       if (!conflict) throw new Error('Conflict fixture is required');
       await writeFile(join(dataDir, 'reset-conflict'), 'reset');

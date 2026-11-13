@@ -16,14 +16,19 @@ const MAX_CHARS := 200
 
 const COLORS := {
 	"m3": "#7DC6FF", "flash": "#FFD166", "longcat": "#06D6A0",
-	"kimi": "#B388FF", "step5": "#FF6B6B", "boss": "#F2F5FA",
+	"kimi": "#B388FF", "step5": "#FF6B6B", "chief": "#7DC6FF", "boss": "#F2F5FA",
 }
 const NAMES := {
 	"m3": "M3", "flash": "Flash", "longcat": "LongCat",
-	"kimi": "Kimi", "step5": "Step5", "boss": "你",
+	"kimi": "Kimi", "step5": "Step5", "chief": "Chief", "boss": "你",
 }
 
 var who := ""
+## 打回模式：面板不是聊天，而是收返工意见——这句话会真的发给 Chief。
+var reject_request_id := ""
+var reject_title := ""
+## 这个工位上坐的是不是真实 Bot：是，每一句都会真的消耗一次模型调用。
+var real_bot := false
 var draft := ""
 var bubbles: Array = []          # [{"who":String, "text":String, "done":bool}]
 var streaming := false
@@ -70,6 +75,26 @@ func open_with(id: String) -> void:
 	if who != id:
 		streaming = false
 	who = id
+	reject_request_id = ""
+	reject_title = ""
+	set_model_down(false)
+	visible = true
+	_follow_tail = true
+	draft = ""
+	if _entry:
+		_entry.text = ""
+		_entry.visible = true
+	queue_redraw()
+	_entry.call_deferred("grab_focus")
+
+
+## 打开打回面板：玩家写一句返工意见，这句话会真的交回 Chief。
+func open_reject(request_id: String, title := "") -> void:
+	streaming = false
+	who = "chief"
+	reject_request_id = request_id
+	reject_title = title
+	real_bot = false
 	set_model_down(false)
 	visible = true
 	_follow_tail = true
@@ -118,7 +143,18 @@ func set_model_down(down: bool) -> void:
 	model_down = down
 	if _entry:
 		_entry.editable = not down
-		_entry.placeholder_text = "脑袋宕机了 · 恢复额度后重启" if down else "聊点什么？（最多 200 字）"
+		if down:
+			_entry.placeholder_text = "脑袋宕机了 · 恢复额度后重启"
+		elif not reject_request_id.is_empty():
+			_entry.placeholder_text = "写返工意见…"
+		else:
+			_entry.placeholder_text = "聊点什么？（最多 200 字）"
+	queue_redraw()
+
+
+## 切到真实 Bot 时打开：提示行要写明每发一句都消耗一次模型调用。
+func set_real_bot(v: bool) -> void:
+	real_bot = v
 	queue_redraw()
 
 
@@ -182,12 +218,22 @@ func _draw() -> void:
 
 	UITheme.portrait(self, who, Rect2(r.position + Vector2(24, 22), Vector2(34, 42)))
 	var nm: String = NAMES.get(who, who)
-	UITheme.text_in(self, _font, Rect2(r.position + Vector2(72, 20), Vector2(w - 216, 28)),
-			"与 %s 聊天" % nm, UITheme.TITLE, Color(COLORS.get(who, "#fff")))
+	var rejecting := not reject_request_id.is_empty()
+	if rejecting:
+		UITheme.text_in(self, _font, Rect2(r.position + Vector2(72, 20), Vector2(w - 216, 28)),
+				"打回返工意见", UITheme.TITLE, Color(COLORS.get(who, "#fff")))
+	else:
+		UITheme.text_in(self, _font, Rect2(r.position + Vector2(72, 20), Vector2(w - 216, 28)),
+				"与 %s 聊天" % nm, UITheme.TITLE, Color(COLORS.get(who, "#fff")))
 	_close_rect = Rect2(r.end.x - 124, r.position.y + 20, 100, 34)
 	UITheme.button(self, _close_rect, _close_rect.has_point(get_local_mouse_position()))
 	UITheme.button_text(self, _font, _close_rect, "关闭 Esc", UITheme.SMALL, UITheme.TEXT)
-	UITheme.text_in(self, _font, Rect2(r.position + Vector2(24, 58), Vector2(w - 48, 22)), "随时和员工聊聊，也可以聊工作以外的话题", UITheme.SMALL, UITheme.TEXT_DIM)
+	var hint := "随时和员工聊聊，也可以聊工作以外的话题"
+	if rejecting:
+		hint = "这句话会真的发给 Chief，由它重新派单（会消耗一次模型调用）"
+	elif real_bot:
+		hint = "在跟真实的 Bot 说话 · 每发一句都会消耗一次模型调用"
+	UITheme.text_in(self, _font, Rect2(r.position + Vector2(24, 58), Vector2(w - 48, 22)), hint, UITheme.SMALL, UITheme.TEXT_DIM)
 
 	_draw_bubbles(r)
 	_draw_input(r)

@@ -31,6 +31,27 @@ The 19 PNG atlases under `godot/assets/cozy_office/atlases/` were generated with
 
 The ten OGG files under `godot/assets/sfx/` are synthesized by `ai-model-party/tools/audio_gen.py`. The source distribution does not include downloaded music or sampled third-party recordings. Asset descriptions are in `godot/assets/sfx/AUDIO_LICENSES.md`.
 
+## MiniMax Bot (merged engine and team panel)
+
+The Bot engine and the team panel bundled with this MiniApp come from MiniMax Bot, an official
+MiniMax Code plugin. They are redistributed unmodified except for the adaptation described below.
+
+- Name: MiniMax Bot
+- Version: 0.7.24
+- Copyright (c) 2026 MiniMax
+- License: MIT — full text in `miniapps/ai-office/LICENSE-MINIMAX-BOT.txt` (copied into built packages)
+- Upstream: https://github.com/MiniMax-AI/MiniMax-Code-MiniApps/tree/main/plugins/minimax-ai/minimax-bot
+- Merged baseline commit: `513895a1283649f3969ef37b013debfe4e4c7845`
+
+Local adaptations (no task, memory, or scheduling logic was rewritten):
+
+- The upstream Node entry is mounted as `miniapp/node/bot_bridge.mjs` instead of opening its own
+  port, so the plugin keeps one listener on the Host-assigned address.
+- Bot state is stored under `context.dataDir/bot/` so game settings and saves stay separate.
+- The Bot snapshot is served at `GET /api/bot/state`; `GET /api/state` remains the game's.
+- Four `../client/` imports were repointed to `../client/bot/` to match the merged layout.
+- The panel declares a local favicon; its assets live under `miniapp/client/bot/`.
+
 ## Installed dependencies
 
 Python and Node dependencies are installed separately and are not vendored in source or MiniApp packages. Preserve their own notices if redistributing an environment:

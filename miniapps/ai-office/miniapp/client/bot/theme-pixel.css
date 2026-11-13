@@ -1,0 +1,358 @@
+/* AI Office × MiniMax Bot — 暖棕像素皮肤
+ *
+ * 只在 [data-skin='pixel'] 下生效：团队面板（/bot）和游戏里的对话抽屉共用这一套。
+ * 颜色直接取 godot/scripts/ui_theme.gd 的调色板，保证和游戏画面是同一个色系：
+ *   BG #35201e / EDGE #97572d / EDGE_HI #d4a558 / TEXT #f4e6c7 / TEXT_DIM #d4c4a4
+ *   BUBBLE #f2e2c4 / BUBBLE_INK #463022 / GOOD #06D6A0 / BAD #FF6B6B / WARN #FFD166
+ *
+ * 只覆盖颜色、圆角、字体和 embed 布局，不动 app.css 的排版规则——
+ * 气泡宽度、消息栅格、滚动容器都沿用官方实现，避免改一处崩一片。
+ */
+
+[data-skin='pixel'] {
+  --bg: #35201e;
+  --sidebar: #2b1917;
+  --surface: #3f2622;
+  --bubble: #f2e2c4;
+  --user: #4a5a32;
+  --user-ink: #f4e6c7;
+  --ink: #f4e6c7;
+  --muted: #d4c4a4;
+  --subtle: #bdaa88;
+  --line: rgba(212, 165, 88, 0.16);
+  --line-strong: rgba(212, 165, 88, 0.38);
+  --hover: rgba(212, 165, 88, 0.1);
+  --active: rgba(212, 165, 88, 0.2);
+  --tag: rgba(212, 165, 88, 0.16);
+  --star: #ffd166;
+  --danger: #e0605c;
+  --success: #06d6a0;
+  --warning: #ffd166;
+  --shadow-pop: 0 10px 30px -8px rgba(0, 0, 0, 0.6), 0 2px 6px rgba(0, 0, 0, 0.4);
+  --shadow-pill: 0 2px 8px -1px rgba(0, 0, 0, 0.4);
+  --scrim: rgba(20, 13, 11, 0.72);
+  --ring: #35201e;
+  --accent: #7dc6ff;
+  color-scheme: dark;
+}
+
+[data-skin='pixel'] body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'PingFang SC', 'Noto Sans CJK SC', 'Microsoft YaHei', ui-sans-serif, system-ui, sans-serif;
+}
+
+[data-skin='pixel'] .rail,
+[data-skin='pixel'] .side {
+  background: var(--sidebar);
+  border-right-color: var(--line-strong);
+}
+
+[data-skin='pixel'] .main {
+  background: var(--bg);
+}
+
+/* ── 对话气泡：米黄底 + 深棕字，用户侧军绿 ───────────────────────────── */
+[data-skin='pixel'] .bubble {
+  background: var(--bubble);
+  color: #463022;
+  border-radius: 10px;
+  border: 1px solid rgba(151, 87, 45, 0.55);
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.22);
+}
+
+[data-skin='pixel'] .msg.user .bubble {
+  background: #4a5a32;
+  color: #f4e6c7;
+  border-color: rgba(212, 165, 88, 0.45);
+}
+
+/* 气泡里的行内代码、引用、表格：按米黄纸面重新配色，别用深色主题那套 */
+[data-skin='pixel'] .bubble .md code {
+  background: rgba(122, 86, 52, 0.16);
+  color: #5c3a1c;
+}
+
+[data-skin='pixel'] .bubble .md pre {
+  background: #2b1917;
+  border-color: rgba(151, 87, 45, 0.5);
+  color: #f4e6c7;
+}
+
+[data-skin='pixel'] .bubble .md pre code {
+  background: transparent;
+  color: inherit;
+}
+
+[data-skin='pixel'] .bubble .md blockquote {
+  color: #6a4a30;
+  border-left-color: #b5814a;
+}
+
+[data-skin='pixel'] .bubble .md th,
+[data-skin='pixel'] .bubble .md td {
+  border-color: rgba(122, 86, 52, 0.42);
+}
+
+[data-skin='pixel'] .bubble .md th {
+  background: rgba(122, 86, 52, 0.16);
+  color: #3a2416;
+}
+
+[data-skin='pixel'] .bubble .md a {
+  color: #1f6ea8;
+}
+
+[data-skin='pixel'] .msg.user .bubble .md code {
+  background: rgba(0, 0, 0, 0.22);
+  color: #ffe9bd;
+}
+
+[data-skin='pixel'] .msg.user .bubble .md a {
+  color: #b8e2ff;
+}
+
+[data-skin='pixel'] .msg.user .bubble .md blockquote {
+  color: #e8d9b6;
+  border-left-color: rgba(212, 165, 88, 0.6);
+}
+
+/* ── 输入区 ───────────────────────────────────────────────────────── */
+[data-skin='pixel'] .compose-card {
+  background: #261816;
+  border: 1px solid #d4a558;
+  border-radius: 4px;
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.3);
+}
+
+[data-skin='pixel'] .compose-card:focus-within {
+  border-color: #ffdd91;
+}
+
+[data-skin='pixel'] .compose-card textarea {
+  color: #f4e6c7;
+}
+
+[data-skin='pixel'] .compose-card textarea::placeholder {
+  color: #937e62;
+}
+
+[data-skin='pixel'] .send {
+  background: #4a5a32;
+  border: 1px solid #c4a04e;
+  color: #fff0cc;
+  border-radius: 4px;
+}
+
+[data-skin='pixel'] .send:disabled {
+  opacity: 0.45;
+}
+
+/* ── 按钮、胶囊、圆钮 ──────────────────────────────────────────────── */
+[data-skin='pixel'] .btn {
+  background: #4a5a32;
+  border: 1px solid #c4a04e;
+  color: #fff0cc;
+  border-radius: 4px;
+}
+
+[data-skin='pixel'] .btn:hover {
+  background: #57683a;
+}
+
+[data-skin='pixel'] .btn.danger-solid {
+  background: #8c3a34;
+  border-color: #e0605c;
+}
+
+[data-skin='pixel'] .round {
+  background: #3f2622;
+  border: 1px solid rgba(212, 165, 88, 0.4);
+  color: #f4e6c7;
+}
+
+[data-skin='pixel'] .round:hover {
+  background: #4a2d28;
+}
+
+[data-skin='pixel'] .pill {
+  background: #2b1917;
+  border: 1px solid rgba(212, 165, 88, 0.4);
+  color: #f4e6c7;
+}
+
+/* ── 事件行、引用卡、工具条 ───────────────────────────────────────── */
+[data-skin='pixel'] .event,
+[data-skin='pixel'] .event button {
+  color: var(--muted);
+}
+
+[data-skin='pixel'] .quote-card {
+  border-left-color: #b5814a;
+  color: #d4c4a4;
+}
+
+[data-skin='pixel'] .msg-tools button {
+  color: var(--subtle);
+}
+
+[data-skin='pixel'] .msg-tools button:hover {
+  color: #ffd166;
+}
+
+/* ── 侧栏与列表 ───────────────────────────────────────────────────── */
+[data-skin='pixel'] .side-row:hover,
+[data-skin='pixel'] .side-row[aria-current='true'] {
+  background: var(--hover);
+}
+
+[data-skin='pixel'] .side-row[aria-current='true'] {
+  background: var(--active);
+}
+
+/* ── 详情抽屉、弹层、对话框 ───────────────────────────────────────── */
+[data-skin='pixel'] .drawer {
+  background: var(--surface);
+  border-left: 1px solid var(--line-strong);
+}
+
+[data-skin='pixel'] .card,
+[data-skin='pixel'] .qcard {
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+}
+
+[data-skin='pixel'] dialog.confirm {
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+}
+
+[data-skin='pixel'] .toast {
+  background: #2b1917;
+  color: #f4e6c7;
+  border: 1px solid rgba(212, 165, 88, 0.4);
+  border-radius: 4px;
+}
+
+[data-skin='pixel'] ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+[data-skin='pixel'] ::-webkit-scrollbar-thumb {
+  background: rgba(212, 165, 88, 0.42);
+  border-radius: 3px;
+}
+
+[data-skin='pixel'] ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ── embed 模式：游戏抽屉里只留一个会话 ────────────────────────────── */
+body.embed .rail,
+body.embed .side,
+body.embed .drawer {
+  display: none !important;
+}
+
+body.embed .app {
+  height: 100%;
+}
+
+body.embed .main {
+  border-radius: 0;
+}
+
+body.embed .composer {
+  padding-bottom: 14px;
+}
+
+/* 抽屉自带关闭按钮：Esc 和点击都能关，父页面负责收掉自己 */
+.embed-close {
+  position: fixed;
+  top: 12px;
+  right: 16px;
+  z-index: 30;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid #c4a04e;
+  border-radius: 3px;
+  background: #4a5a32;
+  color: #fff0cc;
+  font-size: 12.5px;
+  letter-spacing: 0.5px;
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.28);
+}
+
+.embed-close:hover {
+  background: #57683a;
+}
+
+/* ── 纸面排版：app.css 把 .md p 的 margin 清零了，段落会贴成一坨 ───── */
+[data-skin='pixel'] .bubble .md p {
+  margin: 0 0 9px;
+}
+
+[data-skin='pixel'] .bubble .md > *:last-child {
+  margin-bottom: 0;
+}
+
+[data-skin='pixel'] .bubble .md h3,
+[data-skin='pixel'] .bubble .md h4,
+[data-skin='pixel'] .bubble .md h5,
+[data-skin='pixel'] .bubble .md h6 {
+  margin: 12px 0 6px;
+  color: #3a2416;
+}
+
+[data-skin='pixel'] .bubble .md ul,
+[data-skin='pixel'] .bubble .md ol {
+  margin: 0 0 9px;
+}
+
+[data-skin='pixel'] .bubble .md li + li {
+  margin-top: 3px;
+}
+
+[data-skin='pixel'] .bubble .md table {
+  margin: 0 0 10px;
+}
+
+/* ── 交付文件卡：米黄纸面上的浅棕卡，不要深色主题那套灰块 ─────────── */
+[data-skin='pixel'] .bubble .media-file,
+[data-skin='pixel'] .bubble .user-attachments a {
+  background: rgba(122, 86, 52, 0.1);
+  border: 1px solid rgba(122, 86, 52, 0.38);
+  border-radius: 4px;
+  color: #5a4130;
+}
+
+[data-skin='pixel'] .bubble .media-file-name {
+  color: #4a2f1c;
+}
+
+[data-skin='pixel'] .bubble .media-file-hint {
+  color: #8a6a48;
+}
+
+[data-skin='pixel'] .bubble .media-file:hover {
+  background: rgba(122, 86, 52, 0.18);
+}
+
+
+/* 表头别被压成两行：列宽交给浏览器，表头保持一行 */
+[data-skin='pixel'] .bubble .md th {
+  white-space: nowrap;
+}
+
+/* 抽屉比原版面板宽，气泡跟着放宽一点，四列表格才不挤 */
+body.embed .bubble {
+  max-width: min(94%, 800px);
+}
+
+body.embed .msg.user .bubble-wrap {
+  max-width: min(94%, 800px);
+}

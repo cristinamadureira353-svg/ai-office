@@ -4,6 +4,49 @@
 
 A pixel office management game featuring five model-powered employees: M3, Flash, LongCat, Kimi and Step5. Manage client tasks, review deliveries, chat with employees, organize breaks and meetings, and balance money, stamina and mood.
 
+## Bot team panel (built in)
+
+This MiniApp now carries MiniMax Bot's engine and team panel, so installing it alone is enough:
+you do not need to install MiniMax Bot separately.
+
+- `/ai-office` is the pixel office game and its first-run setup, unchanged.
+- `/bot` is the Bot team panel: chat with Chief and the other Bots, manage the roster, and
+  watch real tasks move from queued to running to done.
+
+Chief is created automatically the first time the Bot panel opens; there is no separate setup
+step. The panel stays dormant until then, so a player who never opens it keeps the original game
+behaviour and no Bot files are written.
+
+### Permissions and versions
+
+The package declares `agentAccess: ["session.run"]` and serves its team tools at
+`/mcp/minimax-bot`. It needs MiniMax Code 3.1.2 or later.
+
+### Data layout
+
+Bot data is kept apart from the game's:
+
+```text
+<dataDir>/settings.json   game configuration (unchanged)
+<dataDir>/saves/          game saves (unchanged)
+<dataDir>/bot/            Bot state, messages, memory, uploads and avatars
+```
+
+Bot model choices come from the Host's own model catalog. The five office employees keep using
+whatever provider keys the game was already configured with; the two systems do not share keys.
+
+### Recovery semantics
+
+A queued Bot task survives a restart; a task that was running becomes `unknown` and is never
+replayed automatically, because it may already have produced side effects. This mirrors MiniMax
+Bot's own behaviour.
+
+### Stage 1 scope
+
+This stage merges the engine and the panel only. Bot tasks are not yet projected onto the office,
+and they do not affect client orders, money, stamina or reputation. The game and the Bot panel
+run side by side in one process.
+
 ## Install and open
 
 Use the complete built plugin, not the source template. Quit MiniMax Code and copy the entire `ai-office` directory, including hidden `.minimax-plugin/`, into your MiniMax data directory's `plugins/` folder (default: `~/.minimax/plugins/ai-office/`). Keep any old-plugin backup outside `plugins/`. Reopen the host and ask the Agent to open “AI 事务所”.

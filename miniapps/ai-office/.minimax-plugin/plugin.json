@@ -9,6 +9,6 @@
   "category": "Other",
   "exampleQueries": ["打开 AI 事务所", "打开像素办公室游戏"],
   "apps": [],
-  "mcpServers": [],
+  "mcpServers": ["servers.mcp.json"],
   "skills": []
 }

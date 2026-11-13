@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { execFile } from 'node:child_process';
-import { promisify, isDeepStrictEqual } from 'node:util';
+import { promisify } from 'node:util';
 import { createRequire } from 'node:module';
 import { fixture } from './fixture.mjs';
 
@@ -34,19 +34,23 @@ print(json.dumps(d,ensure_ascii=False))
     const response = await fetch(f.base+'/api/state');
     assert.equal(response.status, 200, 'legacy conflict IDs must not break the entire state endpoint');
     const before = await response.json();
+    // 先证明这份旧存档本身确实带着客户与冲突数据，否则"被清空"是无的放矢。
+    const seeded = JSON.parse(source.stdout);
+    assert.equal(seeded.clients.length, 3, 'the legacy save really carries three clients');
+    assert.equal(seeded.conflicts.length, 1, 'the legacy save really carries one conflict id');
+    // 经营玩法已停用（命令即工单）：读档一律清空客户、交付与冲突（防盗门），
+    // 旧存档里的 3 个客户与冲突不借读档复活——所以这里是 0，不是 3。
+    assert.deepEqual(before.clients, [], 'restore must drop every recovered client');
+    assert.deepEqual(before.finished, [], 'restore must drop recovered deliveries');
+    assert.deepEqual(before.conflicts, [], 'a conflict id cannot resurrect a conflict once clients are cleared');
+    // 但队伍与经济必须原样保留，整个 /api/state 不能崩。
     assert.equal(before.workers.length, 5);
-    assert.equal(before.clients.length, 3);
-    assert.deepEqual(before.conflicts, []);
     assert.deepEqual([before.day,before.money,before.rep,before.tick], [1,869,59,81175]);
-    assert.equal(before.clients[2].status, '等待');
-    for (const i of [0,1]) {
-      assert.equal(before.clients[i].status, '待验收');
-      assert.equal(before.clients[i].result, '完整测试交付物'+i);
-    }
     await f.dispose();
     await f.restart();
     const reopened = await f.get('/api/state');
-    assert.ok(isDeepStrictEqual(reopened.clients, before.clients), 'reopening preserves recovered order states and deliveries');
+    assert.deepEqual(reopened.clients, [], 'reopening keeps recovered clients cleared');
+    assert.deepEqual(reopened.finished, [], 'reopening keeps recovered deliveries cleared');
     assert.deepEqual(reopened.conflicts, []);
     const {chromium} = createRequire(join(process.env.AI_OFFICE_TEST_NODE_MODULES,'package.json'))('playwright');
     browser = await chromium.launch({headless:true,executablePath:process.env.AI_OFFICE_TEST_CHROMIUM,

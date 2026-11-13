@@ -91,6 +91,51 @@ func _populate_deco() -> void:
 	print("[OFFICE] 静态道具 %d 个" % placed)
 
 
+## 这个格子是不是被墙或家具占着。
+func _cell_blocked(cell: Vector2i) -> bool:
+	if md.is_wall(cell):
+		return true
+	for p in tile_layer.layout.get("props", []):
+		for c in p.get("blocked_cells", []):
+			if Vector2i(int(c[0]), int(c[1])) == cell:
+				return true
+	return false
+
+
+## Chief 的主管位：会议室主桌一头的干净格子。找不到干净位置就返回 (-1,-1)，
+## 由调用方退回员工面板里的只读条目。
+func chief_spot() -> Vector2i:
+	if md == null or tile_layer == null:
+		return Vector2i(-1, -1)
+	var table: Dictionary = {}
+	for p in tile_layer.layout.get("props", []):
+		if String(p.get("prop", "")) == "meeting_table":
+			table = p
+			break
+	var cells: Array = table.get("blocked_cells", [])
+	if cells.is_empty():
+		return Vector2i(-1, -1)
+	var max_x := -999
+	var min_y := 999
+	var max_y := -999
+	for c in cells:
+		max_x = maxi(max_x, int(c[0]))
+		min_y = mini(min_y, int(c[1]))
+		max_y = maxi(max_y, int(c[1]))
+	# 主桌长边朝东西，主管位就在桌子一头；找不到就往外一圈圈找。
+	var head := Vector2i(max_x + 1, (min_y + max_y) / 2)
+	for radius in range(0, 5):
+		for dy in range(-radius, radius + 1):
+			for dx in range(-radius, radius + 1):
+				if maxi(absi(dx), absi(dy)) != radius:
+					continue
+				var cell := head + Vector2i(dx, dy)
+				if not md.in_bounds(cell) or _cell_blocked(cell):
+					continue
+				return cell
+	return Vector2i(-1, -1)
+
+
 ## 在 unit_layer 上挂一个角色（M1-4 起使用）
 func spawn_worker(who: String, script_res: String) -> Node2D:
 	if unit_layer == null:

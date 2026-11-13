@@ -9,6 +9,22 @@
         if (streams.get(request) === controller) callback(JSON.stringify({ request, ...packet }));
       };
       (async () => {
+        // GET /api/events：真实 Bot 回复的长连接，没有 body。帧格式与 /api/chat 的
+        // 流式响应一致（data: ...\n\n），所以复用同一套 reader/TextDecoder 逐块转发。
+        if (url === window.location.origin + '/api/events') {
+          const response = await fetch(url, { method:'GET', headers:{ 'Accept':'text/event-stream' },
+            signal:controller.signal, credentials:'same-origin' });
+          const reader = response.body.getReader(), decoder = new TextDecoder();
+          try {
+            while (true) {
+              const part = await reader.read();
+              if (part.done) break;
+              emit({ data:decoder.decode(part.value, { stream:true }) });
+            }
+            emit({ data:decoder.decode(), end:true });
+          } finally { reader.releaseLock(); }
+          return;
+        }
         if (url !== window.location.origin + '/api/chat') throw new Error('invalid_route');
         const response = await fetch(url, { method:'POST', headers:{ 'Content-Type':'application/json' },
           body, signal:controller.signal, credentials:'same-origin' });

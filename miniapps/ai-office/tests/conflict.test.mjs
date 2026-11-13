@@ -19,15 +19,21 @@ test('conflict popup: four real mouse choices reach Game.judge and close the mod
   };
   try {
     assert.equal((await (await f.post('/api/settings', f.settings)).json()).ok, true);
-    await t.test('pending conflict survives closing and reopening with dialogue and progress', async () => {
+    await t.test('reopening drops the seeded conflict and client through the restore guard', async () => {
       const before = await f.get('/api/state');
+      // 先确认注入的冲突与冲突客户在关闭前确实存在，否则"被清空"无从谈起。
+      assert.equal(before.conflicts.length, 1, 'a conflict is live before closing');
+      assert.ok(before.clients.some(c => c.id === before.conflicts[0].client), 'the conflicting client is present before closing');
       await f.dispose();
       await f.restart();
       const after = await f.get('/api/state');
-      assert.deepEqual(after.conflicts, before.conflicts, 'original participants and dialogue survive reopening');
+      // 经营玩法已停用（命令即工单）：读档一律清空客户与冲突（防盗门），
+      // 所以重开后冲突与其客户都不复存在，而非"带着对话与进度存活"。
+      assert.deepEqual(after.conflicts, [], 'reopening clears the pending conflict');
+      assert.deepEqual(after.clients, [], 'reopening clears the conflicting client');
+      // 经济不因读档丢失，页面不崩。
       assert.equal(after.day, before.day);
       assert.equal(after.money, before.money);
-      assert.deepEqual(after.clients, before.clients);
     });
     browser = await chromium.launch({headless:true, executablePath:process.env.AI_OFFICE_TEST_CHROMIUM,
       args:['--use-angle=swiftshader', '--enable-unsafe-swiftshader']});

@@ -2,7 +2,7 @@ class_name SavePanel
 extends Control
 ## M4-3 存档 / 读档面板
 ##
-## 按 F5 开合。左边是存档列表（名字/天数/资金/声誉/在职数/时间），
+## 按 F5 开合。左边是存档列表（名字/天/在职/时间），
 ## 右边三个动作：立刻存档、读这一档、关掉。
 ##
 ## ★坏档**照样列出来**、标红"存档文件坏了"并可点——但点了会拿到后端的
@@ -20,6 +20,11 @@ const W := 800.0
 const H := 500.0
 const ROW_H := 60.0
 const PAD := 24.0
+## 初始声誉：后端 stats.INIT_REP = 50（server/stats.py:63）。
+## 新写出的存档声誉恒等于它，旧存档靠这一点认出来——见 _is_legacy()。
+const INIT_REP := 50
+## 旧存档提示语（详情区）。旧档不迁移、不删除，只是读的时候说一声。
+const LEGACY_HINT := "旧版存档：客户与资金记录不再使用"
 
 var saves: Array = []
 var _font: Font
@@ -196,7 +201,7 @@ func _draw() -> void:
 	var lw := _list_rect.size.x
 	var split := lw * .42
 	UITheme.text_in(self, _font, Rect2(lx + 12, ly, split - 24, 16), "存档", 10, UITheme.TEXT_FAINT)
-	UITheme.text_in(self, _font, Rect2(lx + split + 12, ly, lw - split - 24, 16), "天 / 钱 / 声誉 / 在职", 10, UITheme.TEXT_FAINT)
+	UITheme.text_in(self, _font, Rect2(lx + split + 12, ly, lw - split - 24, 16), "天 / 在职 / 时间", 10, UITheme.TEXT_FAINT)
 	UITheme.text_in(self, _font, Rect2(lx + split + 12, ly + 16, lw - split - 24, 16), "时间 · 类型", 10, UITheme.TEXT_FAINT)
 	var shown := 0
 	for button in _btns:
@@ -209,8 +214,12 @@ func _draw() -> void:
 		var usable := bool(s.get("ok", false))
 		UITheme.panel(self, row, UITheme.BG, UITheme.ACCENT if sid == _sel else UITheme.EDGE, .22)
 		var tag := "自动" if s.get("auto") else "手动"
+		# 旧存档（经营玩法停用前留下的）标一下，玩家一眼能认出。
+		# 坏档不标——它已经写着"存档文件坏了"，再叠一个标记只是噪音。
+		if usable and _is_legacy(s):
+			tag += "·旧版"
 		UITheme.text_in(self, _font, Rect2(row.position + Vector2(12, 12), Vector2(split - 24, 18)), "%s [%s]" % [str(s.get("name", sid)), tag], 12, UITheme.TEXT if usable else UITheme.TEXT_FAINT)
-		UITheme.text_in(self, _font, Rect2(row.position + Vector2(split + 12, 12), Vector2(lw - split - 24, 18)), "%s 天  %s 元  %s 声誉  %s 人" % [str(s.get("day", "?")), str(s.get("money", "?")), str(s.get("rep", "?")), str(s.get("workers_left", "?"))], 11, UITheme.TEXT_DIM)
+		UITheme.text_in(self, _font, Rect2(row.position + Vector2(split + 12, 12), Vector2(lw - split - 24, 18)), "第 %s 天 · 在职 %s 人 · %s" % [str(s.get("day", "?")), str(s.get("workers_left", "?")), str(s.get("saved_at_str") or "—")], 11, UITheme.TEXT_DIM)
 		UITheme.text_in(self, _font, Rect2(row.position + Vector2(split + 12, 32), Vector2(lw - split - 24, 14)), "%s · %s" % [str(s.get("saved_at_str", "")), str(s.get("why", ""))], 10, UITheme.TEXT_FAINT if usable else UITheme.DANGER)
 		if not usable:
 			UITheme.text_in(self, _font, Rect2(row.position + Vector2(12, 32), Vector2(split - 24, 14)), "存档文件坏了：" + str(s.get("msg", "")), 10, UITheme.DANGER)
@@ -227,12 +236,22 @@ func _draw() -> void:
 	var cur := _current()
 	if not cur.is_empty():
 		var dy := by + 156
-		var fields := ["存档名：%s" % str(cur.get("name", "—")), "第 %s 天 · 资金 %s · 声誉 %s" % [str(cur.get("day", "—")), str(cur.get("money", "—")), str(cur.get("rep", "—"))], "在职 %s 人" % str(cur.get("workers_left", "—")), "保存于 %s" % str(cur.get("saved_at_str", "—")), "原因：%s" % str(cur.get("why", "—"))]
+		# ★不再显示"资金/声誉"：经营玩法停用后这两个数不再进账，
+		#   摆在那儿只会让人以为钱还在涨。旧档另给一句提示（见 _is_legacy）。
+		var fields := ["存档名：%s" % str(cur.get("name", "—")),
+			"第 %s 天 · 在职 %s 人" % [str(cur.get("day", "—")), str(cur.get("workers_left", "—"))],
+			"保存于 %s" % str(cur.get("saved_at_str", "—")),
+			"原因：%s" % str(cur.get("why", "—"))]
 		for field in fields:
 			for line in UITheme.preview_lines(field, 176, _font, 11, 2):
 				UITheme.text_in(self, _font, Rect2(bx, dy, 176, 18), line, 11, UITheme.TEXT_DIM)
 				dy += 18
 			dy += 8
+		# 旧存档：说清楚它是旧档、客户与资金记录不再使用（不迁移、不删除）。
+		if bool(cur.get("ok", false)) and _is_legacy(cur):
+			for line in UITheme.preview_lines(LEGACY_HINT, 176, _font, 11, 2):
+				UITheme.text_in(self, _font, Rect2(bx, dy, 176, 18), line, 11, UITheme.TEXT)
+				dy += 18
 
 
 ## enabled   = 这个动作当前能不能执行（决定外观）
@@ -260,6 +279,34 @@ func _sel_is_ok() -> bool:
 	return not c.is_empty() and bool(c.get("ok", false))
 
 
+## ★这是不是旧存档？（经营玩法停用前留下的那种）
+##
+## 判据：**rep（声誉）是数字，且不等于 50**。
+##
+## 为什么只能这么判（依据全在后端代码里）：
+##   - 面板拿到的是列表接口给的那几项：list_saves()（server/save.py:382）只给
+##     id/ok/msg/name/auto/why/day/money/rep/workers_left/saved_at_str。
+##     存档文件里真正一眼就能认出旧档的 "format"（版本号，server/save.py:96）
+##     和 "clients"（server/save.py:113）**面板都拿不到**。
+##   - 声誉是唯一还能用的信号：改声誉的三处全是客户事件——验收 +rg
+##     （server/game.py:919）、打回 -5（server/game.py:924）、客户流失 -3
+##     （server/game.py:1296）；而客户系统已经停用（server/game.py:1337 注释：
+##     不再来客户，tick 不再调用 spawn_client），所以**新写出的存档声誉恒等于
+##     初始值 stats.INIT_REP = 50**（server/stats.py:63）。旧存档只要接过、打回
+##     或丢过任何一单，声誉就不是 50。
+##
+## ★这个判据是**单向**的：声誉还是 50 的旧档（从头到尾没完成过一单）认不出来。
+##   宁可漏认也不误认——误认会让玩家以为自己的新存档坏了。
+##   另外：读旧档会把声誉一起读回来（server/save.py:164 `game.rep = d["rep"]`），
+##   之后新存的档也带着这个旧数值，于是也会被标成旧版——这不算误认，
+##   它确实带着旧档的数据。
+func _is_legacy(s: Dictionary) -> bool:
+	var rep: Variant = s.get("rep", null)
+	if typeof(rep) != TYPE_INT and typeof(rep) != TYPE_FLOAT:
+		return false		# 坏档没有数值声誉（list_saves 给的是 "?"）
+	return int(rep) != INIT_REP
+
+
 ## 测试用：直接塞列表并选中
 func debug_set(list_data: Array, sel := "") -> void:
 	saves = list_data
@@ -272,5 +319,6 @@ func debug_set(list_data: Array, sel := "") -> void:
 func debug_state() -> Dictionary:
 	return {"visible": visible, "sel": _sel, "n": saves.size(),
 			"sel_ok": _sel_is_ok(),
+			"legacy": _is_legacy(_current()),
 			"btns": _btns.size(),
 			"ids": _btns.map(func(b): return String(b["id"]))}

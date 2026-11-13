@@ -8,7 +8,11 @@
 iframe{border:0;width:100%;height:100%;display:block}main{max-width:820px;margin:auto;padding:28px 24px}h1{font-size:24px;margin:0 0 12px}p{line-height:1.75;margin:12px 0}label{display:block;margin:18px 0 8px;font-weight:600}
 textarea{display:block;width:100%;height:220px;padding:14px;color:#f1dfba;background:#38251f;border:1px solid #ac804f;border-radius:6px;font:13px/1.75 system-ui,sans-serif;resize:vertical;min-height:140px;overflow:auto;overflow-wrap:anywhere}
 button{padding:11px 20px;background:#657044;color:#fff0cc;border:1px solid #c4a04e;border-radius:5px;cursor:pointer;font:inherit}button:disabled{opacity:.55;cursor:wait}button:focus-visible,textarea:focus-visible{outline:2px solid #ffdd91;outline-offset:3px}.actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:16px}.secondary{background:transparent;border-color:#ac804f}
-small{display:block;margin-top:6px;color:#b9a589;line-height:1.65}.keys{display:flex;gap:8px;flex-wrap:wrap;padding:0;margin:14px 0 0;list-style:none}.keys li{padding:5px 10px;border:1px solid #795b40;border-radius:4px;color:#dbc6a5}#message{min-height:24px;color:#ffdc99}#status{color:#b9a589;font-size:13px}[hidden]{display:none!important}@media(max-width:480px){main{padding:22px 18px}textarea{height:240px}.actions button{flex:1;padding:11px 12px}}
+small{display:block;margin-top:6px;color:#b9a589;line-height:1.65}.keys{display:flex;gap:8px;flex-wrap:wrap;padding:0;margin:14px 0 0;list-style:none}.keys li{padding:5px 10px;border:1px solid #795b40;border-radius:4px;color:#dbc6a5}#message{min-height:24px;color:#ffdc99}#status{color:#b9a589;font-size:13px}[hidden]{display:none!important}
+/* 对话抽屉：876×760，右侧滑出，像素木框取自游戏同一张 UI 图集（13-ui.png 裁的 panel.png）。 */
+#chat-drawer{position:fixed;inset:0;z-index:40;display:flex;justify-content:flex-end;align-items:flex-start;padding:24px;background:rgba(13,9,8,.55);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+.chat-frame{width:876px;height:760px;max-width:calc(100vw - 48px);max-height:calc(100vh - 48px);border:15px solid transparent;border-image:url('/bot/panel.png') 42 42 42 42 fill stretch;background:#35201e;box-shadow:0 24px 70px rgba(0,0,0,.55);display:flex}
+.chat-frame iframe{flex:1;width:100%;height:100%;border:0;background:#35201e;display:block}@media(max-width:480px){main{padding:22px 18px}textarea{height:240px}.actions button{flex:1;padding:11px 12px}}
 </style>
 <main id="setup" hidden>
 <h1>AI 事务所</h1>
@@ -22,6 +26,9 @@ small{display:block;margin-top:6px;color:#b9a589;line-height:1.65}.keys{display:
 <p id="status" role="status">等待 AI 完成配置，保存后会自动进入游戏。</p>
 </main>
 <iframe id="game" title="AI 事务所游戏" allow="autoplay; fullscreen" hidden></iframe>
+<div id="chat-drawer" hidden>
+  <div class="chat-frame"><iframe id="chat-frame" title="与 Bot 对话"></iframe></div>
+</div>
 <script type="module">
 const setup=document.getElementById('setup'), game=document.getElementById('game');
 const prompt=document.getElementById('prompt'), copy=document.getElementById('copy');
@@ -57,6 +64,22 @@ copy.addEventListener('click',async()=>{
  message.textContent=copied?'已复制。发给 AI，按它的引导选择模型、申请或提供 Key。':'提示词已选中，请按 ⌘C（Windows 按 Ctrl+C）复制后发给 AI。';
 });
 check.addEventListener('click',()=>{void checkSettings(true);});
+// 游戏里点「聊天」时由 host.js 调进来；抽屉自己带关闭按钮，也接受 Esc 和点背景。
+const drawer=document.getElementById('chat-drawer'), chatFrame=document.getElementById('chat-frame'), gameFrame=game;
+let drawerBot='';
+window.AIOfficeChat={
+ open(botId){
+  const id=String(botId??'').trim(); if(!id)return false;
+  if(drawerBot!==id){ chatFrame.src='/bot?embed=chat&bot='+encodeURIComponent(id); drawerBot=id; }
+  drawer.hidden=false; return true;
+ },
+ close(){
+  if(drawer.hidden)return;
+  drawer.hidden=true; drawerBot=''; chatFrame.removeAttribute('src');
+  try{ gameFrame.focus(); }catch{}
+ },
+};
+drawer.addEventListener('click',(event)=>{ if(event.target===drawer) window.AIOfficeChat.close(); });
 window.addEventListener('pagehide',stopPolling);
 </script>
 </html>

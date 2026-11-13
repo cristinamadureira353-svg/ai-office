@@ -23,7 +23,7 @@ func _init() -> void:
 	var staff: Array = []
 	for who in ["m3", "flash", "longcat", "kimi", "step5"]:
 		staff.append({"id":who, "stamina":100, "mood":70, "acting":"在工位", "job":null})
-	main._on_state({"workers":staff, "clients":[], "meeting":{"kind":"normal", "topic":"周会", "seated":[]}})
+	main._on_state({"workers":staff, "meeting":{"kind":"normal", "topic":"周会", "seated":[]}})
 	main.save_panel.open([{"id":"playthrough", "ok":true, "day":1, "name":"后台测试存档", "money":500, "rep":50}])
 	await process_frame
 	var layer := main.save_panel.get_parent()
@@ -43,14 +43,12 @@ func _init() -> void:
 	check("存档弹窗阻止底层员工栏响应", main.worker_panel.selected.is_empty())
 	check("点击遮挡区域后存档面板保持可见", main.save_panel.visible)
 	main.save_panel.close()
-	main.client_panel.show_client({"id":"busy", "status":"服务中", "served_by":"m3"}, staff)
+	# 客户/每日结算已从 MainController 整体移除：喂一份不含 clients/daily 键的快照，
+	# _on_state 必须照常走完，办公室团队与员工面板不能因缺少客户数据而崩或不渲染。
+	main._on_state({"workers":staff, "meeting":{"kind":"normal", "topic":"周会", "seated":[]}})
 	await process_frame
-	for employee in staff:
-		check("已接单订单无法再派给 " + employee.id, not main.client_panel._unavailable_reason(employee).is_empty())
-	main.client_panel.show_client({"id":"waiting", "status":"等待", "served_by":null}, staff)
-	for employee in staff:
-		check("等待订单允许空闲员工接单 " + employee.id, main.client_panel._unavailable_reason(employee).is_empty())
-	main.client_panel.show_client({}, staff)
+	check("无客户数据快照下 _on_state 照常存下员工快照", main.state.get("workers", []).size() == staff.size())
+	check("无客户数据快照下办公室团队照常渲染", main.workers.size() == staff.size() and main.workers.values().all(func(n): return is_instance_valid(n)))
 	main.office.cam_dir.snap_to("meeting")
 	main.office.cam_dir.cam.force_update_scroll()
 	await process_frame

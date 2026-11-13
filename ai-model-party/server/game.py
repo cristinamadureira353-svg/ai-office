@@ -542,6 +542,8 @@ class Game:
         return max(3, min(5, base + bonus))
 
     def spawn_client(self):
+        # 客户系统已停用：命令即工单 —— 不再有客户上门，任何调用进来都直接返回
+        return
         cap = self.client_slots(self.day, self.rep)
         if len(self.slots) >= cap:
             return
@@ -858,6 +860,13 @@ class Game:
         w = self.workers.get(who)
         if not w:
             return {"ok": False, "msg": "没有这个角色"}
+        # ★ 关系事件：真 Bot 的关系八卦靠它点火。
+        #   两端传工位 key（m3/flash/…）—— relations.ALL 认的就是它，
+        #   真 Bot 坐上工位就自动接进关系网，ALL 一个字都不用改。
+        #   纯数值、不调模型 ⇒ 放在 brain_down 拦截**之前**：
+        #   额度烧光的时候关系不该跟着停摆（那恰恰是最需要关系的时刻）。
+        if action == "rel_event":
+            return self.rel_event(arg)
         if action == "reboot":
             if not w.brain_down or w.brain_checking:
                 return {"ok": False, "msg": "脑袋正常，或正在检查恢复"}
@@ -884,7 +893,7 @@ class Game:
             w.acting = "去休息"
             return {"ok": True, "msg": f"{w.meta['name']} 去茶水间休息"}
         # ★M4-4：轮休。DESIGN 6.5「主动安排轮休」的实现。
-        #   off  = 今天不上工（不接单、疲劳归零、体力回满）
+        #   off  = 今天不上工（只保留去茶水间的走位；体力回满/疲劳归零已随经营玩法停用）
         #   back = 取消轮休，回到正常排班
         if action in ("off", "back"):
             w.off_today = (action == "off")
@@ -894,38 +903,51 @@ class Game:
             else:
                 w.acting = "已恢复排班"
             return {"ok": True,
-                    "msg": (f"{w.meta['name']} 今天轮休（不涨疲劳，体力回满）" if action == "off"
+                    "msg": (f"{w.meta['name']} 今天轮休" if action == "off"
                             else f"{w.meta['name']} 恢复排班")}
         if action == "assign":
-            if arg in self.conflicts:
-                return {"ok": False, "msg": "这单正在被人抢，轮不到你派"}
-            c = next((x for x in self.clients if x.id == arg and x.status == "等待"), None)
-            if not c:
-                return {"ok": False, "msg": "这个客户不在等待中"}
-            if c.served_by:
-                return {"ok": False, "msg": f"这个客户已经由 {self.workers[c.served_by].meta['name']} 接了"}
-            if w.job:
-                return {"ok": False, "msg": f"{w.meta['name']} 手上有活"}
-            # M2-8 派单前置条件：不然后面所有数值规则都能被玩家一条指令绕过
-            if not w.on_duty:
-                return {"ok": False, "msg": f"{w.meta['name']} 已经离职了"}
-            if w.strike:
-                return {"ok": False, "msg": f"{w.meta['name']} 今天在罢工，说什么都不听"}
-            if w.off_today:
-                return {"ok": False, "msg": f"{w.meta['name']} 今天轮休，不接单"}
-            if not ST.can_accept(w.stamina):
-                return {"ok": False,
-                        "msg": f"{w.meta['name']} 体力只剩 {int(w.stamina)}，接不动了（<{ST.REFUSE_STAMINA}）"}
-            if not ST.accepts_complex(w.mood) and getattr(c, "difficulty", 1) >= 2:
-                return {"ok": False,
-                        "msg": f"{w.meta['name']} 心情太差（{int(w.mood)}），不肯接复杂单"}
-            c.served_by = who
-            w.job = c.id
-            w.acting = "去接单"
-            threading.Thread(target=self._serve_client_thread,
-                             args=(c.id, self.gen), daemon=True).start()
-            return {"ok": True, "msg": f"{w.meta['name']} 去接「{c.task}」"}
+            # 客户系统已停用：命令即工单 —— 接单指令直接拒绝。
+            # 原前置条件（含体力/心情两段门槛）随整个分支一起移除，不再保留。
+            return {"ok": False, "msg": "接单已停用：现在直接在办公室给 Bot 下命令"}
         return {"ok": False, "msg": "未知指令"}
+
+    # ── 关系事件（真 Bot 的关系八卦）────────────────────────────────────
+    def rel_event(self, arg):
+        """写一条关系变化。纯数值，不调模型。
+
+        客户系统停用后，关系原来的燃料（抢单冲突 / 验收 / 复盘会）全都不会再发生，
+        关系值从此不再变化 = 名存实亡。真 Bot 坐上工位以后，它们的一举一动
+        由客户端打过来（见 Godot 侧的甩锅逻辑），这里把它变成真实的关系变化。
+
+        参数：{"event": 关系事件名, "a": 工位key, "b": 工位key}
+          · event 取自 relations.EVENT_DELTAS（blame_accused / blame_shift / …）
+          · a / b 是工位 key（relations.ALL），也就是关系的两端
+        数值一律用 EVENT_DELTAS 现成的值，这里不新增、不调大小。
+        不合法的输入一律返回 {"ok": False, "msg": 中文原因}，不抛异常。
+        """
+        if not isinstance(arg, dict):
+            return {"ok": False, "msg": "参数不对：要传 {event, a, b} 三个字段"}
+        event = arg.get("event")
+        a = arg.get("a")
+        b = arg.get("b")
+        if not isinstance(event, str) or event not in REL.EVENT_DELTAS:
+            return {"ok": False,
+                    "msg": "不认识的关系事件：%s（可用：%s）"
+                           % (event, "、".join(REL.EVENT_DELTAS.keys()))}
+        if a not in REL.ALL or b not in REL.ALL:
+            return {"ok": False,
+                    "msg": "工位不对：a / b 必须是 %s 之一" % "、".join(REL.ALL)}
+        if a == b:
+            return {"ok": False, "msg": "关系的两端不能是同一个人"}
+        delta = REL.bump(event, a, b, tick=self.tick)
+        name_a = REL.NAMES.get(a, a)
+        name_b = REL.NAMES.get(b, b)
+        value = REL.get(a, b)
+        if not delta:
+            return {"ok": True, "delta": 0, "value": value,
+                    "msg": "%s 对 %s 的好感没变（已经到头了）" % (name_a, name_b)}
+        return {"ok": True, "delta": delta, "value": value,
+                "msg": "%s 对 %s 的好感 %+g（现在是 %g）" % (name_a, name_b, delta, value)}
 
     def accept(self, cid, approved):
         c = next((x for x in self.clients if x.id == cid), None)
@@ -936,16 +958,19 @@ class Game:
         q = ATTR[c.served_by]["quality"] * (getattr(w, "eff", 1.0) if w else 1.0)
         if approved:
             gain = int(c.reward * (0.6 + q * 0.6))
-            self.money += gain
+            # 经营玩法停用：接单收入不再入账（money 字段保留，save.py 仍读它）
             # ★M4-4：声誉涨幅走饱和曲线（stats.rep_gain），不是固定 +3
             rg = ST.rep_gain(self.rep)
             self.rep = min(100, self.rep + rg)
             c.status = "已完成"
-            self.event("accept", f"验收通过：+{gain} 元，声誉 +{rg}", who=c.served_by)
-            txt = f"通过！入账 {gain} 元"
+            # ★经营玩法停用：接单收入不再入账（上面那行 gain 仍然照算，
+            #   但它既不进账、界面上也没有对应显示，报给玩家就是假消息）。
+            #   这条分支只报声誉 —— 那是这一单真正会改的数。
+            self.event("accept", f"验收通过，声誉 +{rg}", who=c.served_by)
+            txt = f"通过！声誉 +{rg}"
         else:
             self.rep = max(0, self.rep - 5)
-            self.money = max(0, self.money - int(c.reward * 0.3))
+            # 经营玩法停用：打回不再扣钱（money 字段保留，save.py 仍读它）
             c.status = "已完成"
             self.failures.append({"task": c.task, "why": "老板打回了",
                                   "who": c.served_by})
@@ -1283,10 +1308,7 @@ class Game:
                                 w.order = None
                                 w.acting = f"在{LOC_LABEL[loc]}"
                     # 体力/心情恢复
-                    if w.acting in ("在茶水间休息",):
-                        w.stamina = min(ATTR[w.who]["stamina_max"],
-                                        w.stamina + 0.9 * K)
-                        w.mood = min(100, w.mood + 0.5 * K)
+                    # 经营玩法停用：茶水间不再回体力/心情（rest 与轮休只保留走位）
                     if w.acting in ("在摸鱼",):
                         w.mood = min(100, w.mood + 1.2 * K)
                         w.stamina = max(0, w.stamina - 0.15 * K)   # M4-4：-0.3 → -0.15
@@ -1360,10 +1382,9 @@ class Game:
                 last_jev = time.time()
                 threading.Thread(target=self.jev_decide, daemon=True).start()
             # 客户刷新：每 SPAWN_SEC 秒来一个（测试可调快）
+            # 客户系统已停用：命令即工单 —— 不再来客户，tick 不再调用 spawn_client
             if time.time() - last_spawn > SPAWN_SEC / TIME_SCALE:
                 last_spawn = time.time()
-                with self._lock:
-                    self.spawn_client()
             # ★M4-4 自动跨天：DAY_TICKS 到了就结算。
             #   以前跨天只能靠外部打 /api/newday，而"30 天长局"那边一天只给
             #   1.2 秒，于是体力/工资这些**按天计**的量根本没有任何一天的分母。
@@ -1403,50 +1424,81 @@ class Game:
         return self.daily_settle()
 
     def daily_settle(self):
-        """跨天时跑一次：工资 → 疲劳/罢工/离职 → 自然衰减 → 失败检测。
+        """跨天时跑一次：出勤 → 疲劳回落 → 自然衰减 → 失败检测。
+
+        ★经营玩法停用（钱/罢工/离职这一整套都退场了）：
+          钱不再进出、疲劳不再涨、罢工与离职不再发生。模拟经营玩法已经没有
+          对象了（没有客户、没有接单），这些数字只会在后台默默变化，界面上
+          却一处都不显示，还会顺带把人赶出办公室——工位空出来，"办公室跟随
+          真实 Bot 团队"就断了。所以每天的结算保留下来（它还负责日切与存档
+          触发点），只关掉跟钱和经营有关的那部分。
 
         返回一份明细，直接透给客户端当日结算面板。
         """
         on_duty = [w for w in self.workers.values() if w.on_duty]
-        # 1) 工资 + 加班补贴（疲劳高的是在加班）
+        # 1) 出勤 + 工资明细
+        #    ★经营玩法停用：钱不再进出。原来这里调 ST.daily_settle 算工资、扣钱，
+        #      再按"资金为负"累计破产天数——现在整条不再调用：
+        #      money 字段留着（save.py 仍会读写它），数值从此固定，界面也不再显示它。
+        #      明细的形状照旧（客户端结算面板按这个形状读），数值归零：
+        #      钱不会动了，面板上就不该再显示"发了多少工资"。
         overtime = sum(1 for w in on_duty if w.fatigue >= 2)
-        self.money, detail = ST.daily_settle(self.money, len(on_duty), overtime)
-        self.event("wages", "发工资 -%d 元%s"
-                   % (detail["wages"] + detail["overtime"],
-                      ("（含加班补贴 %d）" % detail["overtime"]) if overtime else ""))
-        if self.money < 0:
-            self.neg_days += 1
-        else:
-            self.neg_days = 0
+        detail = {"wages": 0, "overtime": 0, "team_build": 0, "total": 0}
+        # ★只报还在真实变化的数：在岗人数。工资这条线整个退场了
+        #   （钱不动、界面上也没有金额），报"不结算工资"等于在讲一个不存在的玩法。
+        self.event("wages", "今日结算：%d 人在岗" % len(on_duty))
+        # 钱不再变 ⇒ 不会再有"资金为负"⇒ 破产计数恒为 0（字段留着，save.py 会读写它）。
+        self.neg_days = 0
 
         # 2) 疲劳 → 罢工 → 离职
+        #    ★经营玩法停用：疲劳不再增长，也不再判罢工、不再判离职。
+        #      依据：疲劳唯一的增长来源是"今天真出了活"（worked_today），
+        #      而 worked_today 只在 _serve_client_thread 交付成功时置位——
+        #      客户/接单系统已停用（spawn_client 直接 return、assign 指令被拒），
+        #      这条路径永远走不到，疲劳没有增长源。它剩下的唯一效果就是
+        #      "无意义地涨 → 罢工 → 离职"，而离职的会让办公室空出一个工位，
+        #      直接破坏"办公室跟随真实 Bot 团队"。
+        #      字段与显示一律保留：fatigue 照旧递减（客户端还画疲劳条），
+        #      strike/strike_days/quit 照旧存在（存档与快照都要读），
+        #      只是不再由每日结算写入。
         quits, strikes = [], []
         for w in on_duty:
             if w.brain_down:
                 w.worked_today = False
+                # 旧存档残留的罢工状态：脑子宕机的人也一并解除（罢工已停用）
+                w.strike = False
+                w.strike_days = 0
                 continue
             if w.strike:
                 w.fatigue = ST.FATIGUE_MAX          # 罢工中，疲劳维持
             elif w.off_today:
-                # ★M4-4 轮休：疲劳清零。这是 DESIGN 6.5「主动安排轮休」的兑现，
-                #   也是这套疲劳系统唯一能被玩家影响的入口（原来只涨不跌）。
-                w.fatigue = 0
+                # 经营玩法停用：轮休不再把疲劳清零（DESIGN 6.5 的数值兑现退场；
+                # 留这个分支只为让轮休的人不吃 worked_today 的涨疲劳）
+                pass
             elif w.worked_today:
-                w.fatigue = ST.next_fatigue(w.fatigue, True)
+                # ★经营玩法停用：疲劳不再增长。唯一的增长源是"今天真出了活"
+                #   （worked_today 只在 _serve_client_thread 交付成功时置位），
+                #   而接单/客户系统已停用 ⇒ 这条分支永远走不到。
+                pass
             else:
                 w.fatigue = max(0, w.fatigue - 1)   # 歇一天缓一点
-            if ST.should_strike(w.fatigue):
-                w.strike = True
-                w.strike_days += 1
-                strikes.append(w)
-                if ST.should_quit(w.strike_days):
-                    w.quit = True
-                    w.strike = False
-                    quits.append(w)
-            else:
+            # ★经营玩法停用：不再判罢工、不再判离职。判据（ST.should_strike /
+            #   ST.should_quit）留在 stats.py 里没动，这里只是不再让它生效——
+            #   钱和疲劳都不再是把人赶出办公室的理由（离职会让工位空出来，
+            #   直接破坏"办公室跟随真实 Bot 团队"）。
+            #   旧存档里可能还留着 strike=True：罢工的唯一成因就是疲劳涨到 3，
+            #   而疲劳不再增长 ⇒ 这个状态不会再被制造出来，留着只会让那个人
+            #   永远停在"罢工"里（办公室就少一个人），这里一并解除。
+            #   strike/strike_days 字段照旧存在（存档与快照都要读）。
+            if w.strike:
+                w.strike = False
                 w.strike_days = 0
             w.worked_today = False
             w.off_today = False        # 轮休只管当天，跨天自动恢复排班
+        # ★经营玩法停用：quits/strikes 恒为空，下面这两段（罢工事件、离职事件，
+        #   以及"关系差的人跟着走"那条连带离职）不会再触发。代码原样留着，
+        #   判据（ST.should_strike / ST.should_quit）也在 stats.py 里没动，
+        #   将来要恢复经营玩法时把写入接回去即可。
         for w in strikes:
             self.event("strike", "%s 罢工了，今天什么都不干（连续第 %d 天）"
                        % (w.meta["name"], w.strike_days), who=w.who)
@@ -1492,17 +1544,21 @@ class Game:
         return out
 
     def team_build(self):
-        """团建：花钱给全员回心情。"""
-        if self.money < ST.TEAM_BUILD:
-            return {"ok": False, "msg": "钱不够团建（要 %d）" % ST.TEAM_BUILD}
-        self.money -= ST.TEAM_BUILD
+        """团建：给全员回心情（不再扣钱）。
+
+        ★经营玩法停用：钱已经不再进出（接单收入删了、每日结算不再扣工资），
+          界面上也不显示"资金"——这时候再扣 80 元，玩家在界面上看不到任何
+          变化，只是被扣了一个看不见的数。所以团建不再扣钱。
+          "钱不够"的前置拒绝也一起去掉：钱不再变，这个条件永远不会成立，
+          留着就变成"点了没反应"，那才是 bug。
+          动作和效果都留着（心情 +25 是氛围功能），只是不涉及金额。
+        """
         for w in self.workers.values():
             if w.brain_down:
                 continue
             w.mood = min(ST.MOOD_MAX, w.mood + ST.TEAM_BUILD_MOOD)
             w.fatigue = max(0, w.fatigue - 1)
-        self.event("team_build", "团建，花了 %d 元，全员心情 +%d"
-                   % (ST.TEAM_BUILD, ST.TEAM_BUILD_MOOD))
+        self.event("team_build", "团建，全员心情 +%d" % ST.TEAM_BUILD_MOOD)
         return {"ok": True, "msg": "团建完成，全员心情 +%d" % ST.TEAM_BUILD_MOOD}
 
     # ── 老板聊天（M2-7）──
@@ -1538,7 +1594,10 @@ class Game:
     def chat_brief(self, who):
         """给老板聊天用的开场状态。比普通状态全：带上这个角色自己的状态和关系。"""
         w = self.workers.get(who)
-        parts = [f"第{self.day}天 · {self.money}元 · 声誉{self.rep}"]
+        # ★经营玩法停用：钱不再进出、界面上也不显示；声誉则因为客户系统
+        #   整个停用而固定不变（新档恒为 50，旧档还原后也不再动），同样没地方显示。
+        #   两个数报出来只会让老板聊起玩家看不到、也改不了的指标 —— 只留天数。
+        parts = [f"第{self.day}天"]
         if w:
             job = ""
             if w.job:

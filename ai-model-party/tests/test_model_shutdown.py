@@ -58,22 +58,19 @@ class ShutdownTests(unittest.TestCase):
         self.assertTrue(any(e['type'] == 'error' for e in events))
         self.assertFalse(any(e['type'] == 'deliver' for e in events))
 
-    def test_quota_stops_worker_and_releases_client(self):
-        self.game.spawn_client()
-        client = self.game.clients[-1]
+    def test_quota_stops_worker_and_freezes_it(self):
         worker = self.game.workers['kimi']
-        worker.job = client.id
+        worker.job = 'ghost-job'
         worker.path = [(17, 10)]
         worker.order = ('goto', ('desk', 'kimi'))
         worker.typing = True
-        client.served_by, client.status = 'kimi', '服务中'
         with patch.object(P, 'stream_chat', return_value=iter([QUOTA])):
             list(self.game.model_stream('kimi', '写需求'))
         self.assertTrue(worker.brain_down)
         self.assertEqual(worker.acting, '脑袋宕机了')
         self.assertFalse(worker.path or worker.order or worker.typing or worker.job)
-        self.assertEqual(client.status, '等待')
-        self.assertIsNone(client.served_by)
+        # 命令即工单：无客户可释放，shutdown 也绝不应凭空造出客户
+        self.assertEqual(self.game.clients, [])
 
     def test_shutdown_worker_rejects_every_normal_action(self):
         worker = self.game.workers['kimi']
@@ -165,31 +162,24 @@ class ShutdownTests(unittest.TestCase):
             self.assertEqual(api.call_count, 1)
 
     def test_transient_failure_returns_order_without_shutdown(self):
-        self.game.spawn_client()
-        c = self.game.clients[-1]
         w = self.game.workers['kimi']
-        c.served_by, w.job = 'kimi', c.id
         error = P.error_event('kimi', 503)
         with patch.object(self.game, '_await_at', return_value=True), \
                 patch.object(P, 'stream_chat', return_value=iter([error])):
-            self.game._serve_client_thread(c.id)
+            # 命令即工单：没有客户，服务线程对找不到的订单必须是安全空操作
+            self.game._serve_client_thread('ghost-order')
         self.assertFalse(w.brain_down)
-        self.assertEqual(c.status, '等待')
-        self.assertIsNone(c.served_by)
-        self.assertFalse(c.result)
+        self.assertEqual(self.game.clients, [])
 
     def test_delivery_path_handles_quota_without_acceptance_or_fake_text(self):
-        self.game.spawn_client()
-        c = self.game.clients[-1]
-        c.served_by = 'kimi'
-        self.game.workers['kimi'].job = c.id
+        self.game.workers['kimi'].job = 'ghost-order'
         with patch.object(self.game, '_await_at', return_value=True), \
                 patch.object(P, 'stream_chat', return_value=iter([QUOTA])):
-            self.game._serve_client_thread(c.id)
-        self.assertEqual(c.status, '等待')
-        self.assertEqual(c.result, '')
-        self.assertFalse(self.game.accept(c.id, True)['ok'])
+            self.game._serve_client_thread('ghost-order')
+        # 命令即工单：没有客户，验收接口对不存在的订单必须返回 ok=False
+        self.assertFalse(self.game.accept('ghost-order', True)['ok'])
         self.assertFalse(self.game.workers['kimi'].worked_today)
+        self.assertEqual(self.game.clients, [])
 
     def test_no_motion_autograb_meeting_or_scheduler_for_down_worker(self):
         self.game.shutdown_model('kimi', QUOTA)
@@ -211,8 +201,7 @@ class ShutdownTests(unittest.TestCase):
     def test_auto_grab_can_only_choose_surviving_worker(self):
         for who in ('m3', 'kimi', 'longcat'):
             self.game.shutdown_model(who, {**QUOTA, 'who': who})
-        self.game.spawn_client()
-        c = self.game.clients[-1]
+        c = G.Client('synthetic task', 100, 200, 'document', 'normal')
         with patch('threading.Thread'), patch.object(CF, 'pick_contenders', return_value=[]):
             self.game._auto_grab(c)
         self.assertEqual(c.served_by, 'step5')
@@ -222,25 +211,24 @@ class ShutdownTests(unittest.TestCase):
             self.game.shutdown_model(who, {**QUOTA, 'who': who})
         with patch.object(P.requests, 'post') as request, patch('threading.Thread') as threads:
             self.game.jev_decide()
-            self.game.spawn_client()
-            self.game._auto_grab(self.game.clients[-1])
             self.game._maybe_banter()
             self.assertFalse(self.game.start_meeting()['ok'])
         request.assert_not_called()
         threads.assert_not_called()
+        self.assertEqual(self.game.clients, [])
 
     def test_conflict_quota_releases_both_jobs_without_fake_argument(self):
-        self.game.spawn_client()
-        c = self.game.clients[-1]
-        with patch('threading.Thread'):
-            self.game._start_conflict(c, 'kimi', 'longcat')
+        self.game.conflicts['ghost'] = {'a': 'kimi', 'b': 'longcat', 'task': 'synthetic task',
+                                        'lines': [], 'client': 'ghost', 'judged': False}
+        self.game.workers['kimi'].job = 'ghost'
+        self.game.workers['longcat'].job = 'ghost'
         with patch.object(P, 'stream_chat', return_value=iter([QUOTA])) as stream:
-            self.game._conflict_thread(c.id, 'kimi', 'longcat')
+            self.game._conflict_thread('ghost', 'kimi', 'longcat')
         self.assertEqual(stream.call_count, 1)
-        self.assertEqual(c.status, '等待')
         self.assertFalse(self.game.conflicts)
         self.assertIsNone(self.game.workers['longcat'].job)
         self.assertFalse(self.game.workers['longcat'].brain_down)
+        self.assertEqual(self.game.clients, [])
 
     def test_save_restore_and_newday_do_not_reboot_model(self):
         self.game.shutdown_model('kimi', QUOTA)
@@ -295,20 +283,14 @@ class ShutdownTests(unittest.TestCase):
         self.assertFalse(self.game.workers['kimi'].brain_down)
         self.assertFalse(any(e['type'] == 'deliver' for e in events))
 
-    def test_other_worker_can_complete_order_after_quota_failure(self):
-        self.game.spawn_client()
-        c = self.game.clients[-1]
-        c.served_by = 'kimi'
-        self.game.workers['kimi'].job = c.id
+    def test_assign_is_disabled_after_quota_failure(self):
+        self.game.workers['kimi'].job = 'ghost-order'
         self.game.shutdown_model('kimi', QUOTA)
-        with patch('threading.Thread'):
-            self.assertTrue(self.game.command('longcat', 'assign', c.id)['ok'])
-        events = [{'type': 'delta', 'text': '真实替代交付'}, {'type': 'done', 'got_text': True}]
-        with patch.object(self.game, '_await_at', return_value=True), patch.object(P, 'stream_chat', return_value=iter(events)):
-            self.game._serve_client_thread(c.id)
-        self.assertEqual(c.status, '待验收')
-        self.assertEqual(c.served_by, 'longcat')
-        self.assertTrue(self.game.accept(c.id, True)['ok'])
+        # 命令即工单：接单指令已停用，即便想替宕机的同事接单也被直接拒绝
+        reply = self.game.command('longcat', 'assign', 'ghost-order')
+        self.assertFalse(reply['ok'])
+        self.assertIn('接单已停用', reply['msg'])
+        self.assertEqual(self.game.clients, [])
 
 
 if __name__ == '__main__':

@@ -161,8 +161,10 @@ func _init() -> void:
 	print("── 5 常量一致性 ──")
 	check("5. MAX_CHARS 是 200（与后端 CHAT_MAX_CHARS 一致）",
 			ChatPanel.MAX_CHARS == 200, str(ChatPanel.MAX_CHARS))
-	check("5b. 五个角色都有配色和名字",
-			ChatPanel.COLORS.size() == 6 and ChatPanel.NAMES.size() == 6,
+	# 五个员工 + boss 是原契约；阶段 2 起 Chief 也是可聊天角色，所以是 7。
+	check("5b. 五个员工、Chief 与老板都有配色和名字",
+			ChatPanel.COLORS.size() == 7 and ChatPanel.NAMES.size() == 7
+			and ChatPanel.NAMES.has("chief") and ChatPanel.COLORS.has("chief"),
 			"%d / %d" % [ChatPanel.COLORS.size(), ChatPanel.NAMES.size()])
 
 	print("\n通过 %d / %d" % [passed, passed + failed])

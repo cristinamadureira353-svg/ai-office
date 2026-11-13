@@ -10,5 +10,6 @@
     "lifecycle": "on-demand"
   },
   "surface": { "path": "/ai-office" },
-  "mcpEndpoints": []
+  "mcpEndpoints": [{ "server": "minimax-bot", "path": "/mcp/minimax-bot" }],
+  "agentAccess": ["session.run"]
 }

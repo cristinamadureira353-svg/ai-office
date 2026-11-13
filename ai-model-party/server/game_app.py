@@ -28,7 +28,11 @@ CHAT_MAX_CHARS = 200
 #   漏了的话 API 直接 400「未知指令：off」——而单测是直接调 g.command() 的，
 #   绕过了这一层，所以 82 条断言全绿、真发 HTTP 才发现。
 VALID_ACTIONS = ("goto", "rest", "assign", "accept", "meeting", "dismiss",
-                 "blame_talk", "team_build", "off", "back", "reboot")
+                 "blame_talk", "team_build", "off", "back", "reboot",
+                 # rel_event：真 Bot 的关系八卦（纯数值，不调模型）。
+                 # 漏在这里的话 API 直接 400「未知指令：rel_event」，
+                 # 关系永远不变——上面那条注释说的就是这种坑。
+                 "rel_event")
 # 这些动作由游戏整体执行，不需要指定单个角色
 GLOBAL_ACTIONS = ("accept", "meeting", "dismiss", "judge", "blame_talk",
                   "team_build")

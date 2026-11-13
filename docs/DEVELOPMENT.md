@@ -74,6 +74,42 @@ Linux 可能需要 Playwright 文档列出的浏览器系统依赖。也可用 `
 
 测试使用临时 Host 数据目录和模拟模型响应，覆盖首次引导、配置持久化、重开、聊天、宕机、裁决、座位与尺寸。测试结束时关闭其自身进程。真实付费 API、长局平衡和真实宿主属于另外的验收范围。
 
+## 内嵌 Bot 引擎（阶段 1）
+
+本包在同一 Node 进程里合并了 MiniMax Bot 0.7.24 的引擎与团队面板，合并基线提交为
+`513895a1283649f3969ef37b013debfe4e4c7845`。
+
+目录约定：
+
+```text
+miniapps/ai-office/miniapp/node/            官方 Bot 核心模块 + 本地 server.mjs
+miniapps/ai-office/miniapp/node/bot_bridge.mjs   官方 server 改造版：不自建端口，可挂载
+miniapps/ai-office/miniapp/client/bot/      官方团队面板（入口 bot.html）
+```
+
+本地 `server.mjs` 是唯一监听入口：`GET /api/state` 永远留给游戏快照，Bot 快照走
+`GET /api/bot/state`。Bot 引擎按需初始化——只有访问 `/bot` 或 Bot 接口时才创建，
+未使用 Bot 的玩家不会产生 `dataDir/bot`。
+
+Bot 数据只写 `context.dataDir/bot/`，与游戏的 `settings.json`、`saves/` 分离。
+
+### Bot 自动测试
+
+`tests/bot-runtime.test.mjs` 与 `tests/bot-web.test.mjs` 使用 `fixture.mjs` 里的模拟
+`context.agent`：它只发出官方事件协议的固定回复，不联网、不调用真实模型、不消耗额度。
+覆盖懒初始化、Chief 自动创建、聊天落盘、`dispatch_tasks` 派单与结果回收、重复
+`request_id` 去重、内容变更冲突、重启恢复与关闭。
+
+`dispatch_tasks` 的自动测试是**直接调用 MCP 工具**，用于验证调度语义；它不能证明真实
+Chief 会自主拆分任务。真实工具选择必须在真实宿主里单独冒烟。
+
+### 真实宿主冒烟范围
+
+需要另行授权安装、打开和少量真实模型调用。建议给 Chief 一个低成本、无外部副作用的
+任务，要求它用 `dispatch_tasks` 分给若干 Bot，每个子任务只回复一句角色名，且不调用
+文件、shell、浏览器或其他工具。观察真实的 queued / running / done 与最终汇总，并把
+自动模拟结果与真实模型结果分开记录。
+
 ## CI 与发布
 
 GitHub Actions 对 Python 3.9 / 3.12 运行公开边界和隔离后端检查，并检查 Node 入口语法。它不自动发布 Release，不调用真实模型，也不声称覆盖真实 MiniMax 宿主。

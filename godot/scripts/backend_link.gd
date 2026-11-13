@@ -102,7 +102,11 @@ func _on_done(result: int, code: int, _headers: PackedStringArray, body: PackedB
 
 
 ## 发一条玩家指令
-func send_command(who: String, action: String, arg = null, approved: bool = true, kind: String = "") -> void:
+## quiet=true 时不发 command_done（也就是不弹 toast），但请求照发、
+## judge 的 judgement_done 照发。用来给「后台噪声型」指令闭嘴：
+## 比如甩锅时的关系八卦——关系要真的变，只是不该再单独弹一条提示。
+## 默认 quiet=false：既有调用点的行为逐字不变。
+func send_command(who: String, action: String, arg = null, approved: bool = true, kind: String = "", quiet: bool = false) -> void:
 	var payload := {"who": who, "action": action, "arg": arg, "approved": approved}
 	if action == "judge":
 		payload["kind"] = kind
@@ -115,7 +119,8 @@ func send_command(who: String, action: String, arg = null, approved: bool = true
 		var reply: Variant = JSON.parse_string(b.get_string_from_utf8()) if c == 200 else null
 		var ok := reply is Dictionary and bool(reply.get("ok", false))
 		var msg: String = str(reply.get("msg", "指令完成" if ok else "指令失败")) if reply is Dictionary else "指令未送达，请检查后端连接"
-		command_done.emit(ok, msg)
+		if not quiet:
+			command_done.emit(ok, msg)
 		if action == "judge":
 			judgement_done.emit(str(arg), ok, msg)
 		http.queue_free())
@@ -123,7 +128,8 @@ func send_command(who: String, action: String, arg = null, approved: bool = true
 			["Content-Type: application/json"], HTTPClient.METHOD_POST, body)
 	if err != OK:
 		http.queue_free()
-		command_done.emit(false, "指令未送达，请检查后端连接")
+		if not quiet:
+			command_done.emit(false, "指令未送达，请检查后端连接")
 		if action == "judge":
 			judgement_done.emit(str(arg), false, "指令未送达，请检查后端连接")
 
@@ -161,6 +167,71 @@ func _post_json(path: String, body: Dictionary, cb: Callable) -> void:
 	if err != OK:
 		save_done.emit(false, "请求发不出去（错误码 %d）" % err)
 		http.queue_free()
+
+
+## 拉一次办公室面板（只读聚合）。
+## ★冷启动用：服务端 GET /api/office/panel 内部会 ensureBot()，把懒加载的 Bot
+##   引擎叫醒；引擎起来之后 /api/state 自己就会带上 bot_panel，
+##   所以这里不需要、也不应该再加任何定时轮询。
+## 超时沿用 _poll() 的 5 秒；失败就安静降级（最多是不显示真团队）。
+func api_office_panel(cb: Callable) -> void:
+	var http := HTTPRequest.new()
+	http.timeout = 5.0
+	add_child(http)
+	http.request_completed.connect(func(r, c, _h, b):
+		var panel: Dictionary = {}
+		if r == HTTPRequest.RESULT_SUCCESS and c == 200:
+			var j: Variant = JSON.parse_string(b.get_string_from_utf8())
+			if typeof(j) == TYPE_DICTIONARY:
+				panel = UITheme.dict_of(j, "bot_panel")
+		if cb.is_valid():
+			cb.call(not panel.is_empty(), panel)
+		http.queue_free())
+	var err := http.request(OfficeArt.api_base() + "/api/office/panel")
+	if err != OK:
+		http.queue_free()
+		if cb.is_valid():
+			cb.call(false, {})
+
+
+## 把一句派活交给 Chief。回执只代表"已交出去"，真正进度看 bot_panel。
+func api_office_task(text: String, cb: Callable) -> void:
+	_post_json("/api/office/task", {"text": text}, func(c: int, d: Dictionary, t: String):
+		var ok := c == 200 and bool(d.get("ok", false))
+		var msg := String(d.get("msg", "已交给 Chief，进度看真实任务看板"))
+		if ok:
+			msg = "已交给 Chief，进度看真实任务看板"
+		elif msg.is_empty():
+			msg = "这次没交出去（HTTP %d）" % c
+		if cb.is_valid():
+			cb.call(ok, msg))
+
+
+## 把返工意见交回 Chief。回执只代表"已交出去"——Chief 会真的重新安排，
+## 这一步真的消耗一次模型调用。
+func api_office_reject(request_id: String, reason: String, cb: Callable) -> void:
+	_post_json("/api/office/reject", {"request_id": request_id, "reason": reason}, func(c: int, d: Dictionary, _t: String):
+		var ok := c == 200 and bool(d.get("ok", false))
+		var msg := String(d.get("msg", "返工意见已交给 Chief"))
+		if ok:
+			msg = "返工意见已交给 Chief，它会重新安排（这次真的消耗了一次模型调用）"
+		elif msg.is_empty():
+			msg = "这次没送出去（HTTP %d）" % c
+		if cb.is_valid():
+			cb.call(ok, msg))
+
+
+## 把一句闲聊交给某个真实 Bot。回执只代表"已交出去"，回复走 /api/events 推送。
+func api_office_chat(bot_id: String, text: String, cb: Callable) -> void:
+	_post_json("/api/office/chat", {"bot_id": bot_id, "text": text}, func(c: int, d: Dictionary, _t: String):
+		var ok := c == 200 and bool(d.get("ok", false))
+		var msg := String(d.get("msg", ""))
+		if ok:
+			msg = "话已送到，等它回"
+		elif msg.is_empty():
+			msg = "这次没发出去（HTTP %d）" % c
+		if cb.is_valid():
+			cb.call(ok, msg))
 
 
 func api_save(save_name: String) -> void:

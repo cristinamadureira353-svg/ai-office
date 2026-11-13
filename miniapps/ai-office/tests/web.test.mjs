@@ -123,6 +123,10 @@ test('exported Godot Web: readable UI, employee clicks with a client open, and f
     assert.equal((await (await f.post('/api/settings', f.settings)).json()).ok, true, 'AI completes setup using the local API');
     await page.locator('#game').waitFor({state:'visible',timeout:6000});
     assert.equal(await page.locator('#setup').isVisible(), false, 'saved config automatically enters the game');
+    // 聊天抽屉属于 MiniApp 宿主层（AIOfficeChat）。这一条测的是导出页自身的兜底面板：
+    // 摘掉宿主桥，等于"直接打开导出页"的场景，游戏内自绘面板必须照旧可用。
+    // 有宿主时的抽屉由 tests/bot-drawer-web.test.mjs 单独覆盖。
+    await page.evaluate(() => { try { delete window.AIOfficeChat; } catch {} });
     const frame = page.frameLocator('#game');
     await frame.locator('#canvas').waitFor({state:'visible'});
     await page.waitForFunction(() => {
