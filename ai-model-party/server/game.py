@@ -378,8 +378,7 @@ class Game:
     # 客户/接单停用后，事务所不再有"资金"和"声誉"这两笔账：它们从来只是
     # 假客户的进出场结算物，现在没有任何代码会改动它们。
     # 之所以还留着这两个**只读**属性：HTTP 层（game_app.py 的 /api/load、
-    # /api/newday）和前端（godot/scripts/daily_report.gd 的每日结算面板）
-    # 仍在读这两个 key，直接删掉会让接口 500、界面读不到值。
+    # /api/newday）仍在读这两个 key，直接删掉会让接口 500。
     # 它们不参与任何结算，也不参与任何失败判定。
     @property
     def money(self):
@@ -1048,9 +1047,9 @@ class Game:
         # 2) 疲劳 → 罢工 → 离职
         #    ★经营玩法停用：疲劳不再增长，也不再判罢工、不再判离职。
         #      依据：疲劳唯一的增长来源是"今天真出了活"（worked_today），
-        #      而 worked_today 只在 _serve_client_thread 交付成功时置位——
-        #      客户/接单系统已停用（spawn_client 直接 return、assign 指令被拒），
-        #      这条路径永远走不到，疲劳没有增长源。它剩下的唯一效果就是
+        #      而 worked_today 全仓没有任何地方置 True（只有初始化和每日结算
+        #      里的 False），所以它恒为假、这条分支永远走不到，疲劳没有增长源。
+        #      它剩下的唯一效果就是
         #      "无意义地涨 → 罢工 → 离职"，而离职的会让办公室空出一个工位，
         #      直接破坏"办公室跟随真实 Bot 团队"。
         #      字段与显示一律保留：fatigue 照旧递减（客户端还画疲劳条），
@@ -1072,8 +1071,8 @@ class Game:
                 pass
             elif w.worked_today:
                 # ★经营玩法停用：疲劳不再增长。唯一的增长源是"今天真出了活"
-                #   （worked_today 只在 _serve_client_thread 交付成功时置位），
-                #   而接单/客户系统已停用 ⇒ 这条分支永远走不到。
+                #   （worked_today），而这个字段全仓没有任何地方置 True，
+                #   恒为假 ⇒ 这条分支永远走不到。
                 pass
             else:
                 w.fatigue = max(0, w.fatigue - 1)   # 歇一天缓一点
@@ -1124,7 +1123,7 @@ class Game:
 
         # 4) 失败检测
         #    ★破产机制已下线（见文件头说明）：这里不再判任何失败条件。
-        #      原来的判据是"资金连续为负 3 天"（ST.game_over），挂在钱和声誉
+        #      原来的判据（资金连续为负 3 天、声誉归零、全员离职）挂在钱和声誉
         #      这套已经退场的假账上。真 Bot 团队没有"钱不够就接不了单"，
         #      硬造一个新的失败条件只会卡玩家——所以 game_over 恒为 None，
         #      /api/state 的 game_over 恒为 null（前端读成空串，不显示"游戏结束"）。
@@ -1420,8 +1419,7 @@ class Game:
                 "gameplay_version": 6,
                 "scene": "office",
                 # money / rep：旧经济系统的墓碑值（见 Game.money / Game.rep）。
-                #   前端 daily_report.gd 的每日结算面板还在读这两个 key，
-                #   所以 key 留着，但它们不再参与任何结算。
+                #   HTTP 层读这两个 key，所以 key 留着，但它们不再参与任何结算。
                 "day": self.day, "money": self.money, "rep": self.rep,
                 "tick": self.tick,
                 "clock": "%02d:%02d" % (((self.tick - self._day_start) * TICK_GAME_MIN // 60) % 24,

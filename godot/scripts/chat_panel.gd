@@ -197,8 +197,27 @@ func push_delta(text: String) -> void:
 		begin_stream()
 	bubbles[-1]["text"] += text
 	_follow_tail = true
-	_rebuild_transcript()
+	_update_streaming_bubble()
 	queue_redraw()
+
+
+## 流式时只重排正在长的那一个气泡。
+##
+## 整个会话一起重排的话，一条两千字的回复要把前面每个气泡的 BBCode
+## 重解析一遍、上千个 RichTextLabel 跟着重新布局——长回复时明显拖慢。
+## 只动最后一个，其它气泡的位置跟着挪就行。
+func _update_streaming_bubble() -> void:
+	var index := _layout.size() - 1
+	if index < 0:
+		_rebuild_transcript()
+		return
+	var bubble: Dictionary = bubbles[bubbles.size() - 1]
+	var entry: Dictionary = _layout[index]
+	var txt := str(bubble.text) + "▍"
+	var lines := UITheme.wrap(txt, int(entry["text_width"]), _font, UITheme.BODY)
+	entry["lines"] = lines
+	entry["bbcode"] = MarkdownBBCode.to_bbcode(txt)
+	_relayout(index)
 
 
 func end_stream() -> void:
@@ -288,7 +307,7 @@ func _message_layout() -> Array:
 	return layout
 
 
-## 重建气泡：把 BBCode 写进 RichTextLabel，用它实测出来的高度定每个气泡的位置。
+## 重建气泡：按会话重算布局，缺的 RichTextLabel 补上、多的回收。
 func _rebuild_transcript() -> void:
 	_layout = _message_layout()
 	while _labels.size() < _layout.size():
@@ -308,17 +327,24 @@ func _rebuild_transcript() -> void:
 	while _labels.size() > _layout.size():
 		var stale: RichTextLabel = _labels.pop_back()
 		stale.queue_free()
+	_relayout()
+
+
+## 把 BBCode 写进 RichTextLabel，用它实测出来的高度定每个气泡的位置。
+## from_index 之前的气泡不重写——流式时只有最后一个在长，
+## 前面几百个没必要跟着重解析。位置则一律重排，因为最后一个变高会把它们顶下去。
+func _relayout(from_index := 0) -> void:
 	var y := 0.0
 	for i in _layout.size():
 		var entry: Dictionary = _layout[i]
 		var label: RichTextLabel = _labels[i]
-		label.size = Vector2(entry["text_width"], 0)
-		label.text = entry["bbcode"]
-		# 用户气泡是浅底深字，Bot 气泡是米底深字，两边同一套纸面色。
-		var body := label.get_content_height()
-		if body <= 0.0:
-			body = maxi(1, entry["lines"].size()) * 26.0
-		entry["height"] = body + 28.0
+		if i >= from_index:
+			label.size = Vector2(entry["text_width"], 0)
+			label.text = entry["bbcode"]
+			var body := label.get_content_height()
+			if body <= 0.0:
+				body = maxi(1, entry["lines"].size()) * 26.0
+			entry["height"] = body + 28.0
 		label.position = Vector2(90, y + 14)
 		y += entry["height"] + 10
 	_bubble_canvas.custom_minimum_size = Vector2(0, maxf(0, y - 10))

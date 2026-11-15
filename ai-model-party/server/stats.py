@@ -16,7 +16,6 @@
 STAMINA_MAX = 100
 MOOD_MIN, MOOD_MAX = 0, 100
 FATIGUE_MAX = 3
-REP_MIN, REP_MAX = 0, 100
 
 # ── 阈值（DEV_PLAN M2-8 步骤 2）─────────────────────────────────────────────
 SLACK_MOOD = 20         # < 20 摸鱼概率 +50%
@@ -93,18 +92,7 @@ def natural_decay(stamina_dict, mood_dict, rested=(), slackers=()):
     return out_s, out_m
 
 
-# ── 失败条件（DESIGN 7.3）───────────────────────────────────────────────────
-def bankrupt(money, neg_days):
-    """资金 < 0 且持续 3 天。"""
-    return money < 0 and neg_days >= 3
-
-
-def game_over(money, rep, on_duty, neg_days=0):
-    """返回失败原因字符串，没失败返回 None。"""
-    if len(on_duty) == 0:
-        return "全员离职，事务所关门"
-    if rep <= REP_MIN:
-        return "声誉归零，被行业除名"
-    if bankrupt(money, neg_days):
-        return "资金为负已经 %d 天，破产了" % neg_days
-    return None
+# ★失败条件整套删掉了：破产（资金连续为负 3 天）、声誉归零、全员离职。
+#   它们都挂在钱和声誉这套已经退场的假账上，而真 Bot 团队没有
+#   "钱不够就接不了单"这回事——硬造一个新的失败条件只会卡玩家。
+#   game_over_reason 恒为 None，/api/state 的 game_over 恒为 null。

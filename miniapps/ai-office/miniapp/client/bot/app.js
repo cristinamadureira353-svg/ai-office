@@ -473,8 +473,10 @@ async function mountChat(chatId) {
   ui.helpers = h('section', { class: 'helpers', 'aria-label': t('helper.strip') });
   // 抽屉里的 Chief 收的是工作指令，会被拆给团队：占位符要说清楚这一点，
   // 否则老板以为自己在私聊，结果一句话变成了派单。
-  const placeholder = EMBED_MODE && target.bot?.isMain
-    ? tOr('embed.placeholderDispatch', { name: target.bot.name }, '给 ' + (target.bot.name ?? 'Chief') + ' 下达工作，它会拆给团队…')
+  // 判据必须和真正派单的那一行（submit 里的 `EMBED_MODE && isChiefChat`）一致：
+  // 独立 /bot 页面不派单，在那儿写「会拆给团队」就是在骗人。
+  const placeholder = EMBED_MODE && isChiefChat(chatId)
+    ? tOr('embed.placeholderDispatch', { name: target.bot?.name }, '给 ' + (target.bot?.name ?? 'Chief') + ' 下达工作，它会拆给团队…')
     : target.kind === 'group'
       ? t('compose.placeholderGroup', { name: target.group?.name })
       : t('compose.placeholderBot', { name: target.bot?.name });
@@ -1434,8 +1436,10 @@ function renderQuoting() {
  */
 function isChiefChat(chatId) {
   if (!chatId?.startsWith('bot:')) return false;
-  const bot = botById(chatId.slice(4));
-  return Boolean(bot?.isMain);
+  // state.bots 在 loadState() 里就装好了，首帧挂载时 isMain 已经在。
+  // 早先这里还去读办公室面板的 chief.bot_id，但那个 GET 会触发 reconcile
+  // 随机重排工位并写盘——为了拿一个 id 去动玩家的办公室布局，不值当。
+  return Boolean(botById(chatId.slice(4))?.isMain);
 }
 
 async function submit() {
@@ -1774,10 +1778,11 @@ function wireChrome() {
 }
 
 /**
- * 抽屉模式的收尾：接上关闭按钮，再定位到游戏点开的那个 Bot。
+ * 抽屉模式的收尾：接上关闭按钮和 Esc。
  * 父页面同源时直接调 AIOfficeChat.close()，拿不到就退回游戏页。
+ * 定位到哪个会话不在这里做——那必须发生在画第一帧之前（见 boot）。
  */
-function openEmbeddedChat() {
+function wireEmbedClose() {
   if (!EMBED_MODE) return;
   const close = () => {
     try {
@@ -1797,8 +1802,6 @@ function openEmbeddedChat() {
     event.preventDefault();
     close();
   });
-  const chatId = `bot:${EMBED_BOT}`;
-  if (EMBED_BOT && chatExists(chatId)) openChat(chatId);
 }
 
 async function boot() {
@@ -1818,10 +1821,18 @@ async function boot() {
     return;
   }
   if (!state.agentAvailable) toast(t('boot.noAgent'), 'error');
-  markRead(state.current);
-  renderAll();
+  // 抽屉模式要在画第一帧之前就把目标会话定下来：renderMain() 是按 state.current
+  // 挂载的，晚一步改会先闪一下默认会话。openChat() 自己会 markRead + renderAll，
+  // 不用在这儿再抄一遍它的活。
+  const embedChatId = EMBED_MODE && EMBED_BOT ? `bot:${EMBED_BOT}` : '';
+  if (embedChatId && chatExists(embedChatId)) {
+    openChat(embedChatId);
+  } else {
+    markRead(state.current);
+    renderAll();
+  }
   connect();
-  openEmbeddedChat();
+  wireEmbedClose();
 }
 
 void boot();

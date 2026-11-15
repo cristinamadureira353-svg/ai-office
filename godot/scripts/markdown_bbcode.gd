@@ -18,6 +18,17 @@ extends RefCounted
 ##   ---             → 分隔线
 ##   [文字](链接)     → url
 ##   裸链接           → url
+##
+## ★Bot 是逐字吐出来的，流式中间态一定出现没闭合的标记。
+##   所以这里的规则比 CommonMark 更保守：没配对就不转，两侧贴空也不转。
+##   早先的实现会把孤零零的 "**" 当成一对斜号，加粗的字先正常显示、
+##   再突然变成普通字，闪一下。
+
+## 占位符前缀：代码和链接各一类。
+## 两种链接（[文字](链接) 和裸链接）**共用**同一个前缀和同一张表，
+## 编号才全局唯一——各建一张表、各自从 0 编号，还原时索引会错位。
+const PH_CODE := "\uE000"     # 行内代码
+const PH_LINK := "\uE001"     # 链接（带文字的、裸的）
 
 const HEAD_SIZE := 20
 const BULLET := "• "
@@ -36,7 +47,10 @@ static func to_bbcode(md: String) -> String:
 
 		# 代码块
 		if _is_fence(line):
-			var lang := line.strip_edges().get_slice(" ", 1).strip_edges() if line.strip_edges().split(" ").size() > 1 else ""
+			var lang := ""
+			var parts := line.strip_edges().split(" ", false)
+			if parts.size() > 1:
+				lang = parts[1]
 			var body: Array[String] = []
 			i += 1
 			while i < lines.size() and not _is_fence(lines[i]):
@@ -116,24 +130,21 @@ static func _inline(text: String) -> String:
 	# 反过来的话，链接里的 [ 会被转义掉、代码里的 * 会被当强调。
 	var codes: Array[String] = []
 	var links: Array[String] = []
-	var s := text
 	# 先摘带文字的链接，再摘裸链接：反过来的话，[文档](https://x) 里的
 	# 地址会被裸链接扫描器先吃掉，链接文字就丢了。
-	var marked := _extract_links(s)
-	s = marked["text"]
-	links = marked["links"]
-	var bare := _extract_bare_links(s)
-	s = bare["text"]
-	links.append_array(bare["links"])
+	# ★两者往同一张 links 表里追加：各建一张、各自从 0 编号的话，还原时
+	#   索引会错位——一行里同时出现两种链接，裸链接会被文字链接顶替、
+	#   地址整个消失，而且不报错。
+	var s := _extract_links(text, links)
+	s = _extract_bare_links(s, links)
 	s = _escape(s)
 	s = _extract_code(s, codes)
-	s = _apply_pairs(s, "~~", "[s]", "[/s]")
-	s = _apply_pairs(s, "**", "[b]", "[/b]")
-	s = _apply_pairs(s, "*", "[i]", "[/i]")
+	s = _apply_strike(s)
+	s = _emphasis(s, true)
 	for i in codes.size():
-		s = s.replace("\uE000" + str(i) + "\uE000", "[code]" + codes[i] + "[/code]")
+		s = s.replace(PH_CODE + str(i) + PH_CODE, "[code]" + codes[i] + "[/code]")
 	for i in links.size():
-		s = s.replace("\uE001" + str(i) + "\uE001", links[i])
+		s = s.replace(PH_LINK + str(i) + PH_LINK, links[i])
 	return s
 
 
@@ -146,7 +157,7 @@ static func _extract_code(s: String, codes: Array[String]) -> String:
 			var close := s.find("`", i + 1)
 			if close > i:
 				codes.append(s.substr(i + 1, close - i - 1))
-				out += "\uE000" + str(codes.size() - 1) + "\uE000"
+				out += PH_CODE + str(codes.size() - 1) + PH_CODE
 				i = close + 1
 				continue
 		out += s[i]
@@ -154,16 +165,82 @@ static func _extract_code(s: String, codes: Array[String]) -> String:
 	return out
 
 
-## 处理成对的标记（** 与 *）。
-static func _apply_pairs(s: String, mark: String, open_tag: String, close_tag: String) -> String:
+## 处理成对的强调标记（** 加粗、* 斜体）。
+##
+## emit_tags=true 出 BBCode；false 只留内容、把标记丢掉。
+## 表格走 codeblock，里面 BBCode 不生效，标记必须清掉——但正文里的乘号
+## 不是标记。两种用途共用这一套配对规则：早先表格那边自己写了一套，
+## 结果 "| 2 * 3 * 4 |" 的乘号被吃掉，变成 "2  3  4"。
+##
+## ★两条规则都是从真机踩出来的：
+##   1. 没配对就不转。Bot 是逐字吐出来的，流式中间态一定出现孤零零的
+##      "**"——早先的实现把它当成一对斜号，输出 "[i][/i]"，
+##      加粗的文字会先正常显示、再突然变成普通字（闪一下）。
+##   2. 两侧不能挨空白。"2 * 3 * 4" 是乘法不是斜体；
+##      CommonMark 也是这条规则，两侧贴空的星号一律当普通字符。
+static func _emphasis(s: String, emit_tags: bool) -> String:
 	var out := ""
 	var i := 0
 	while i < s.length():
-		if s.substr(i, mark.length()) == mark:
-			var close := s.find(mark, i + mark.length())
+		if s[i] != "*":
+			out += s[i]
+			i += 1
+			continue
+		var width := 1
+		while i + width < s.length() and s[i + width] == "*":
+			width += 1
+		if width > 2:
+			# 三个以上的星号不是强调，原样留着。
+			out += "*".repeat(width)
+			i += width
+			continue
+		var close := -1
+		var j := i + width
+		while j < s.length():
+			if s[j] == "*":
+				var run := 1
+				while j + run < s.length() and s[j + run] == "*":
+					run += 1
+				if run == width:
+					close = j
+					break
+				j += run
+				continue
+			j += 1
+		if close < 0:
+			# 没有配对的另一半：流式中间态，原样输出。
+			out += "*".repeat(width)
+			i += width
+			continue
+		var content := s.substr(i + width, close - i - width)
+		# ★看的是**内容**的首尾，不是标记外侧：
+		#   "**粗**" 的内容是"粗"，两边不挨空格 → 加粗；
+		#   "2 * 3 * 4" 的内容是" 3 "，挨空格 → 是乘法，不是斜体。
+		#   CommonMark 也是这条规则。
+		if content.is_empty() or _is_ws(content[0]) or _is_ws(content[content.length() - 1]):
+			out += "*".repeat(width)
+			i += width
+			continue
+		if not emit_tags:
+			out += content
+		elif width == 2:
+			out += "[b]" + content + "[/b]"
+		else:
+			out += "[i]" + content + "[/i]"
+		i = close + width
+	return out
+
+
+## 处理成对的删除线（~~）。
+static func _apply_strike(s: String) -> String:
+	var out := ""
+	var i := 0
+	while i < s.length():
+		if s.substr(i, 2) == "~~":
+			var close := s.find("~~", i + 2)
 			if close > i:
-				out += open_tag + s.substr(i + mark.length(), close - i - mark.length()) + close_tag
-				i = close + mark.length()
+				out += "[s]" + s.substr(i + 2, close - i - 2) + "[/s]"
+				i = close + 2
 				continue
 		out += s[i]
 		i += 1
@@ -172,8 +249,8 @@ static func _apply_pairs(s: String, mark: String, open_tag: String, close_tag: S
 
 ## [文字](链接) → [url=链接]文字[/url]；链接先摘成占位符，免得
 ## 里面的 _ 被当斜体、方括号被转义。
-static func _extract_links(s: String) -> Dictionary:
-	var links: Array[String] = []
+## links 由调用方传进来，和裸链接共用一张表，编号才全局唯一。
+static func _extract_links(s: String, links: Array[String]) -> String:
 	var out := ""
 	var i := 0
 	while i < s.length():
@@ -185,37 +262,47 @@ static func _extract_links(s: String) -> Dictionary:
 					var label := s.substr(i + 1, close - i - 1)
 					var url := s.substr(close + 2, end - close - 2)
 					links.append("[url=" + url + "]" + label + "[/url]")
-					out += "\uE001" + str(links.size() - 1) + "\uE001"
+					out += PH_LINK + str(links.size() - 1) + PH_LINK
 					i = end + 1
 					continue
 		out += s[i]
 		i += 1
-	return {"text": out, "links": links}
+	return out
 
 
 ## 裸链接（http/https）也变成可点的。URL 里的下划线不能被当斜体，所以同样先摘出来。
-static func _extract_bare_links(s: String) -> Dictionary:
-	var links: Array[String] = []
+static func _extract_bare_links(s: String, links: Array[String]) -> String:
 	var out := ""
 	var i := 0
 	while i < s.length():
 		if s.substr(i, 7) == "http://" or s.substr(i, 8) == "https://":
 			var end := i
-			while end < s.length() and not _is_space(s[end]):
+			while end < s.length() and not _is_url_end(s[end]):
 				end += 1
 			var url := s.substr(i, end - i)
 			links.append("[url=" + url + "]" + url + "[/url]")
-			out += "\uE001" + str(links.size() - 1) + "\uE001"
+			out += PH_LINK + str(links.size() - 1) + PH_LINK
 			i = end
 			continue
 		out += s[i]
 		i += 1
-	return {"text": out, "links": links}
+	return out
 
 
-static func _is_space(c: String) -> bool:
-	return c == " " or c == "\t" or c == "\n" or c == "（" or c == "，" \
-			or c == "。" or c == "、" or c == ")" or c == "，"
+## 只认真正的空白字符。
+## 加粗判「两侧贴空白」必须用这个：早先那张表里混进了半角右括号，
+## 结果 "**粗(x)**" 被判成两侧贴空、加粗直接失效。
+static func _is_ws(c: String) -> bool:
+	return c == " " or c == "\t" or c == "\n" or c == "\r"
+
+
+## 裸链接到哪里结束：空白和常见的收尾标点都算。
+## 不能和 _is_ws 共用——那是两个问题：加粗只认空白，
+## 链接则必须在 "，" "。" ")" 这些标点前断开。
+static func _is_url_end(c: String) -> bool:
+	return _is_ws(c) or c == ")" or c == "（" or c == "）" \
+			or c == "，" or c == "。" or c == "、" or c == "！" or c == "？" \
+			or c == "；" or c == "：" or c == "]" or c == ">" or c == "\""
 
 
 ## BBCode 里 [ 是标签开头，正文里的方括号要转义。
@@ -255,14 +342,25 @@ static func _table(block: Array[String]) -> String:
 
 static func _cells(line: String) -> Array:
 	var s := line.strip_edges()
+	# 转义竖线（\|）先摘成占位符，免得被当成列分隔。
+	s = s.replace("\\|", "\uE003")
 	if s.begins_with("|"):
 		s = s.substr(1)
 	if s.ends_with("|"):
 		s = s.substr(0, s.length() - 1)
 	var out: Array = []
 	for cell in s.split("|"):
-		out.append(cell.strip_edges())
+		out.append(_strip_marks(cell.replace("\uE003", "|")).strip_edges())
 	return out
+
+
+## 表格走的是 codeblock（等宽），BBCode 在里面不生效，
+## 所以单元格里残留的 markdown 标记要自己去掉，
+## 否则玩家会看到一整排裸的 ** 和 `。
+static func _strip_marks(text: String) -> String:
+	# 星号交给 _emphasis(…, false)：它认得出哪个星号是标记、哪个是乘号。
+	# 这里自己再写一套配对的话，两套规则迟早打架。
+	return _emphasis(text.replace("~~", "").replace("`", ""), false)
 
 
 ## 显示宽度：中文与全角算两格。
@@ -315,25 +413,26 @@ static func _is_bullet(line: String) -> bool:
 	return s.begins_with("- ") or s.begins_with("* ") or s.begins_with("+ ")
 
 
-static func _is_ordered(line: String) -> bool:
-	var s := line.strip_edges()
+## 行首的数字串（有序列表的序号）。
+static func _leading_digits(s: String) -> String:
 	var digits := ""
 	for i in s.length():
 		if s[i] >= "0" and s[i] <= "9":
 			digits += s[i]
 		else:
 			break
+	return digits
+
+
+static func _is_ordered(line: String) -> bool:
+	var s := line.strip_edges()
+	var digits := _leading_digits(s)
 	return digits != "" and s.substr(digits.length(), 2) == ". "
 
 
 static func _list_item(line: String) -> String:
 	var s := line.strip_edges()
-	if _is_ordered(s):
-		var digits := ""
-		for i in s.length():
-			if s[i] >= "0" and s[i] <= "9":
-				digits += s[i]
-			else:
-				break
+	var digits := _leading_digits(s)
+	if digits != "" and s.substr(digits.length(), 2) == ". ":
 		return digits + ". " + _inline(s.substr(digits.length() + 2))
 	return BULLET + _inline(s.substr(2))
