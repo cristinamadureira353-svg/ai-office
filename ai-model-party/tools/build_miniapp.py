@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'tools'))
 from runtime import godot_path
 MODULES = ('game', 'game_app', 'providers', 'scheduler', 'save', 'relations',
-           'stats', 'banter', 'conflict', 'blame_game', 'miniapp_bridge')
+           'stats', 'banter', 'blame_game', 'miniapp_bridge')
 
 
 def run(command, log):

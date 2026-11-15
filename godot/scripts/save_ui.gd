@@ -224,7 +224,7 @@ func _draw() -> void:
 		if not usable:
 			UITheme.text_in(self, _font, Rect2(row.position + Vector2(12, 32), Vector2(split - 24, 14)), "存档文件坏了：" + str(s.get("msg", "")), 10, UITheme.DANGER)
 	if saves.is_empty():
-		UITheme.text_in(self, _font, Rect2(lx + 12, ly + 54, lw - 24, 20), "还没有任何存档。每天结算会自动存一份。", 12, UITheme.TEXT_DIM)
+		UITheme.text_in(self, _font, Rect2(lx + 12, ly + 54, lw - 24, 20), "还没有任何存档。每天结束当天时会自动存一份。", 12, UITheme.TEXT_DIM)
 	else:
 		UITheme.text_in(self, _font, Rect2(lx, r.end.y - 44, lw, 20), "显示 %d–%d / %d · 滚轮查看更多" % [_scroll_index + 1, _scroll_index + shown, saves.size()], 10, UITheme.TEXT_FAINT)
 

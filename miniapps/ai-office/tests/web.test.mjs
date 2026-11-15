@@ -37,13 +37,25 @@ test('rest area seating aligns with cushions and shifted workers remain clickabl
     await page.screenshot({path:join(evidence,'rest-seating-'+stage+'-detail.png'),clip:{
       x:(origin.x+14*32*zoom)*scale,y:(origin.y+17*32*zoom)*scale,
       width:14*32*zoom*scale,height:6.4*32*zoom*scale}});
+    // 详情面板的「去休息」按钮：位置随面板内容高度浮动，按候选 y 逐个点。
+    const clickDetailCommand = async (who) => {
+      for (const y of [362, 396, 338, 410, 326]) {
+        await canvas.click({position:{x:(width-292)*scale,y:y*scale}});
+        for(let i=0;i<12;i++) {
+          await pause(100);
+          if(commands.some(c=>c.who===who && c.action==='goto' && c.arg==='lounge')) return true;
+        }
+      }
+      return false;
+    };
     for(const [who,x,y] of [['flash',18,20.8],['longcat',19.7,20.8],['step5',22.6,21.2]]) {
       await canvas.click({position:{x:(origin.x+x*32*zoom)*scale,y:(origin.y+(y*32-24)*zoom)*scale}});
       await pause(200);
       if(who==='flash') await page.screenshot({path:join(evidence,'rest-seating-'+stage+'-selected.png')});
-      await canvas.click({position:{x:(width-292)*scale,y:396*scale}});
-      for(let i=0;i<20 && !commands.some(c=>c.who===who);i++) await pause(100);
-      assert.ok(commands.some(c=>c.who===who && c.action==='goto' && c.arg==='lounge'),who+' can be selected at its rendered torso');
+      // 详情面板里的指令按钮会随面板内容高度上下移动（状态条从四条缩到两条就上移了）。
+      // 不写死一个 y，按候选高度逐个点，直到后端真的收到这条指令。
+      const got = await clickDetailCommand(who);
+      assert.ok(got,who+' can be selected at its rendered torso');
       await page.keyboard.press('Escape');
       await pause(200);
     }
@@ -59,8 +71,9 @@ test('rest area seating aligns with cushions and shifted workers remain clickabl
   }
 });
 
-test('exported Godot Web: readable UI, employee clicks with a client open, and five chats', {timeout:90000}, async () => {
-  const f = await fixture({client:true});
+test('exported Godot Web: readable UI, employee details and five chats', {timeout:90000}, async () => {
+  // ★旧的客户/冲突玩法下线了，没有客户夹具了：这里用默认局面。
+  const f = await fixture();
   const dependencies = process.env.AI_OFFICE_TEST_NODE_MODULES;
   const {chromium} = createRequire(join(dependencies, 'package.json'))('playwright');
   const evidence = resolve(process.env.AI_OFFICE_TEST_EVIDENCE);
@@ -148,6 +161,17 @@ test('exported Godot Web: readable UI, employee clicks with a client open, and f
       await canvas.click({position:{x:x*scale,y:y*scale}});
       await pause(180);
     };
+    // 同上：详情面板的指令按钮 y 会随面板内容高度浮动，按候选高度逐个点。
+    const clickDetailCommand = async (who) => {
+      for (const y of [362, 396, 338, 410, 326]) {
+        await click(geometry().width-292, y);
+        for (let i = 0; i < 12; i++) {
+          await pause(100);
+          if (commands.some(c => c.who === who && c.action === 'goto' && c.arg === 'lounge')) return true;
+        }
+      }
+      return false;
+    };
     const card = index => {
       const {width,height} = geometry();
       const w = (width - 128) / 5;
@@ -165,23 +189,22 @@ test('exported Godot Web: readable UI, employee clicks with a client open, and f
     };
     await pause(400);
     await page.screenshot({path:join(evidence, 'miniapp-web-healthy.png')});
+    // ★旧的"客户面板"整块下线了：右上角现在显示的是"指令与待办"（真任务），它是只读的，
+    // 点它不会发指令。员工详情与指令走下面逐个点开的那条路。
     await click(geometry().width-184,160);
-    await page.screenshot({path:join(evidence, 'miniapp-web-client.png')});
+    await page.screenshot({path:join(evidence, 'miniapp-web-task-panel.png')});
     const beforeDisabled = commands.length;
     await click(geometry().width-320,418);
-    assert.equal(commands.length,beforeDisabled,'busy employee button must explain its state without dispatching');
-    await page.screenshot({path:join(evidence, 'miniapp-web-disabled-feedback.png')});
-    // 在客户详情可见的情况下逐个选中员工，并验证指令、直接聊天、自动聚焦与发送。
+    assert.equal(commands.length,beforeDisabled,'the read-only task panel dispatches no command on its own');
+    await page.screenshot({path:join(evidence, 'miniapp-web-panel-readonly.png')});
+    // 逐个选中员工（点开员工详情面板），并验证指令、直接聊天、自动聚焦与发送。
     for (const [i,who] of ['m3','flash','longcat','kimi','step5'].entries()) {
-      await click(geometry().width-184,160);
       let row=card(i);
       await click(row.x+22,row.y+36);
       if(i===0) await page.screenshot({path:join(evidence, 'miniapp-web-selected.png')});
-      await click(geometry().width-292,396);
-      await waitFor(() => commands.some(command => command.who===who && command.action==='goto' && command.arg==='lounge'));
+      assert.ok(await clickDetailCommand(who),'the detail panel command button reached the backend for '+who);
       await page.keyboard.press('Escape');
       await pause(150);
-      await click(geometry().width-184,160);
       row=card(i);
       await click(row.x+row.w-37,row.y+23);
       if(i===0) await page.screenshot({path:join(evidence, 'miniapp-web-before-input.png')});
@@ -215,7 +238,15 @@ test('exported Godot Web: readable UI, employee clicks with a client open, and f
     assert.equal((await calls()).length,callsBefore,'down employee chat entry must not call the model');
     await page.screenshot({path:join(evidence, 'miniapp-web-brain-down.png')});
     assert.equal((await f.get('/api/state')).workers.find(w => w.id === 'kimi').brain_down, true);
-    await click(geometry().width-206,348);
+    // 「重启脑袋」按钮在详情面板顶部，位置同样随面板内容高度浮动，按候选高度点。
+    for (const y of [308, 348, 286, 330, 270]) {
+      await click(geometry().width-206, y);
+      for (let i = 0; i < 12; i++) {
+        await pause(100);
+        if ((await calls()).length === callsBefore + 1) break;
+      }
+      if ((await calls()).length === callsBefore + 1) break;
+    }
     await waitFor(async () => (await calls()).length===callsBefore+1);
     assert.equal((await f.get('/api/state')).workers.find(w => w.id === 'kimi').brain_down, true);
     assert.equal((await calls()).length, callsBefore+1,'visible reboot control must perform exactly one probe');

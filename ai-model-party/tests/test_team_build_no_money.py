@@ -4,6 +4,9 @@
 钱不够时还拒绝。玩家在界面上看不到任何数字变化，只被扣了一笔看不见的钱。
 
 修法：不扣钱、不因钱不够拒绝；心情 +25 的效果保留。
+
+★客户系统下线后更进一步：资金与声誉这两笔账整套不存在了，game.py 里
+只剩下只读的墓碑属性（money / rep）。团建碰它们就是写只读属性，直接报错。
 """
 import sys
 import unittest
@@ -19,24 +22,31 @@ class TeamBuildNoMoneyTests(unittest.TestCase):
         game = G.Game()
         before_money = game.money
         before_mood = {who: w.mood for who, w in game.workers.items()}
-        self.assertGreater(before_money, 0)     # 有钱才谈得上"被扣"
         result = game.team_build()
         self.assertTrue(result["ok"], result)
         self.assertEqual(game.money, before_money, "团建不许扣钱")
         for who, w in game.workers.items():
             self.assertEqual(w.mood, min(ST.MOOD_MAX, before_mood[who] + ST.TEAM_BUILD_MOOD))
 
-    def test_team_build_works_with_zero_money(self):
+    def test_money_and_rep_are_read_only_tombstones(self):
+        """旧经济系统已下线：money / rep 只剩只读墓碑，写它们必须报错。"""
         game = G.Game()
-        game.money = 0
+        with self.assertRaises(AttributeError):
+            game.money = 123
+        with self.assertRaises(AttributeError):
+            game.rep = 1
+
+    def test_team_build_works_without_any_fund_state(self):
+        """不再有"钱不够"这个前置条件：团建永远成功，效果保留。"""
+        game = G.Game()
         before_mood = {who: w.mood for who, w in game.workers.items()}
         result = game.team_build()
-        self.assertTrue(result["ok"], result)   # 不因"钱不够"被拒
-        self.assertEqual(game.money, 0)         # 也不会被扣成负数
+        self.assertTrue(result["ok"], result)
+        self.assertEqual(game.money, 0)         # 没有资金概念了
         for who, w in game.workers.items():
             self.assertEqual(w.mood, min(ST.MOOD_MAX, before_mood[who] + ST.TEAM_BUILD_MOOD))
             self.assertGreater(w.mood, before_mood[who])   # 效果确实保留
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     unittest.main(verbosity=2)

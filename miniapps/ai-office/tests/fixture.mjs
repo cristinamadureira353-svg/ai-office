@@ -4,7 +4,7 @@ import { join, resolve } from 'node:path';
 import { createServer } from 'node:net';
 import { pathToFileURL } from 'node:url';
 
-export async function fixture({relocate=false,client=false,resting=false,conflict=false,initialSave=''}={}) {
+export async function fixture({relocate=false,resting=false,initialSave=''}={}) {
   let pluginRoot = resolve(process.env.AI_OFFICE_TEST_PLUGIN);
   const python = process.env.AI_OFFICE_TEST_PYTHON;
   if (!python) throw new Error('Set AI_OFFICE_TEST_PYTHON to the existing venv interpreter');
@@ -53,43 +53,8 @@ if ${resting ? 'True' : 'False'}:
         employee = G.GAME.workers[who]
         employee.pos, employee.acting = spot, '在摸鱼'
         employee.path, employee.order = [], None
-if ${client ? 'True' : 'False'}:
-    customer = G.Client('帮我整理一份测试文档', 96, 200, 'document', 'normal')
-    customer.status, customer.served_by, customer.slot = '服务中', 'm3', 0
-    G.GAME.clients.append(customer)
-    G.GAME.slots[0] = customer
-    G.GAME.workers['m3'].job = customer.id
-if ${conflict ? 'True' : 'False'}:
-    def seed_conflict():
-        with G.GAME._lock:
-            G.GAME.clients.clear()
-            G.GAME.conflicts.clear()
-            for slot in G.GAME.slots: G.GAME.slots[slot] = None
-            for employee in G.GAME.workers.values():
-                employee.job, employee.order, employee.mood = None, None, 70
-            customer = G.Client('帮我把这套流程跑通', 96, 200, 'document', 'normal')
-            customer.status, customer.slot = '冲突中', 0
-            G.GAME.clients.append(customer)
-            G.GAME.slots[0] = customer
-            G.GAME.conflicts[customer.id] = {
-                'a':'m3', 'b':'flash', 'task':customer.task, 'client':customer.id, 'judged':False,
-                'lines':[{'who':'m3','text':'我有现成模板，今晚就能跑通。'},
-                         {'who':'flash','text':'我比他更合适，这单给我。'}]}
-            for who in ('m3', 'flash'):
-                employee = G.GAME.workers[who]
-                employee.job, employee.acting = customer.id, '去理论'
-    # 裁决仍走真实 Game.judge；仅隔离获胜后的付费交付线程。
-    G.GAME._serve_client_thread = lambda *args: None
-    seed_conflict()
-    @API.app.before_request
-    def fixture_requests():
-        marker = data / 'reset-conflict'
-        if marker.exists():
-            marker.unlink()
-            seed_conflict()
-        if API.request.path == '/api/command':
-            with (data / 'commands.jsonl').open('a') as log:
-                log.write(json.dumps(API.request.get_json(silent=True), ensure_ascii=False) + '\\n')
+# ★旧的客户/冲突玩法已下线：Game.Client、clients、slots、conflicts 都没了，
+# 这里不再注入任何客户——想测旧档行为就手搓 v1 存档字典（见 legacySave）。
 (data / 'fixture-pid').write_text(str(os.getpid()))
 sys.argv = [str(bridge)] + sys.argv[3:]
 runpy.run_path(str(bridge), run_name='__main__')
@@ -165,12 +130,85 @@ runpy.run_path(str(bridge), run_name='__main__')
   };
   const panel = async () => (await get('/api/office/panel')).bot_panel;
   return { pluginRoot, scratch, dataDir, base, settings, get, post, put, getText, logs, agent, agentRuns, gate, mcp, panel,
-    async resetConflict() {
-      if (!conflict) throw new Error('Conflict fixture is required');
-      await writeFile(join(dataDir, 'reset-conflict'), 'reset');
-      return (await get('/api/state')).conflicts[0];
-    },
     async dispose() { await runtime.dispose(); },
     async restart() { runtime = await module.start(context); }
   };
+}
+
+/**
+ * 手搓一份 v1（旧模拟经营玩法）格式的存档字典。
+ *
+ * 新后端把客户系统整个下线了（Game.Client / clients / slots / conflicts 都没了），
+ * 没法再靠 Game 类造出一份"带客户和冲突"的旧档，只能按旧 save.py 的
+ * snapshot() 形状直接拼一个 dict：
+ *   · 3 个客户（含 1 个冲突中的）
+ *   · 1 个冲突 id
+ *   · money / rep / neg_days / game_over_reason（破产那套）
+ *   · 员工身上指向客户的 job / working / need / busy / eff，和一条"去接待处"的指令
+ *
+ * @param workers 当前 /api/state 里的 5 个员工（用来取真实的站位与初始体力/心情）
+ */
+export function legacySave(workers, {day=3, tick=81175, money=869, rep=59}={}) {
+  const client = (id, slot, status, servedBy, result=null) => ({
+    id, task: '测试订单' + slot, kind: 'document', persona: 'normal',
+    reward: 200, patience_max: 150, patience: 120, slot,
+    served_by: servedBy, status, result, grab_tick: 0, pos: [3 + slot, 4],
+  });
+  return {
+    format: 1,
+    name: '旧版存档',
+    auto: false,
+    why: '旧版模拟经营存档',
+    saved_at: Date.now() / 1000,
+    saved_at_str: '2026-01-02 03:04:05',
+    day, tick, day_start: 0,
+    money, rep, neg_days: 3,
+    game_over_reason: '资金为负连续 3 天',
+    workers: workers.map((w, i) => ({
+      who: w.id,
+      pos: [w.x, w.y],
+      stamina: w.stamina,
+      mood: w.mood,
+      // 前两个人手上还挂着客户的活，第三个人正准备去接待处接单
+      job: i < 2 ? 'legacy-' + i : null,
+      working: i < 2 ? 12 : 0,
+      need: i < 2 ? 30 : 0,
+      order: i === 2 ? ['goto', ['reception', null]] : null,
+      acting: i < 2 ? '干活中' : (i === 2 ? '去接待处' : '在工位待命'),
+      busy: i < 2,
+      seated: false, seat_cmd: false,
+      fatigue: 0, strike_days: 0, quit: false, strike: false,
+      eff: i < 2 ? 0.8 : 1.0,
+      worked_today: false, off_today: false,
+      brain_down: false, brain_reason: '', brain_scope: 'model',
+    })),
+    clients: [
+      client('legacy-0', 0, '服务中', 'm3'),
+      client('legacy-1', 1, '待验收', 'longcat', '完整测试交付物1'),
+      client('legacy-2', 2, '冲突中', null),
+    ],
+    finished: [client('legacy-3', 3, '已完成', 'step5', '完整测试交付物3')],
+    slots: {'0': 'legacy-0', '1': 'legacy-1', '2': 'legacy-2'},
+    conflicts: ['legacy-2'],
+    conflict_data: {'legacy-2': {
+      a: 'm3', b: 'flash', task: '测试订单2', client: 'legacy-2', judged: false,
+      lines: [{who: 'm3', text: '我有现成模板，今晚就能跑通。'},
+              {who: 'flash', text: '我比他更合适，这单给我。'}],
+    }},
+    relations: {}, cf_store: {}, bt_store: {}, blame_store: {},
+    events: [], log: [], failures: [], banters: [],
+    last_settle: null, meeting: null,
+    rng: null,
+  };
+}
+
+/**
+ * 把一份存档字典写进 Host 数据目录的 saves/ 下，返回存档 id。
+ * 存档目录由 miniapp_bridge.py 按 --data-dir 建，路径与 SAVE_DIR 一致。
+ */
+export async function writeSave(f, id, save) {
+  const dir = join(f.dataDir, 'saves');
+  await mkdir(dir, {recursive: true});
+  await writeFile(join(dir, id + '.json'), JSON.stringify(save, null, 2), 'utf8');
+  return id;
 }

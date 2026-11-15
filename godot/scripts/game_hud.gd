@@ -1,6 +1,6 @@
 class_name GameHUD
 extends Control
-## M1-5 客户端 UI：顶栏 + 客户面板 + 派单 + 验收 + 事件流。
+## M1-5 客户端 UI：顶栏 + 真任务看板 + 事件流。
 ## 防线3（客户端侧）：任何超长文本在显示前截断，UI 永不被撑爆。
 
 const CLIENT_FONT_SIZE := UITheme.BODY

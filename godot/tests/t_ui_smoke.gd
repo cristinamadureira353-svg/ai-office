@@ -30,14 +30,13 @@ func _init() -> void:
 	await process_frame
 
 	print("── 1 所有面板可实例化 ──")
+	# ★旧经营玩法的三个面板（客户 / 抢单冲突 / 每日结算）已删除，
+	#   剩下的都是还在生效的面板。
 	var made := {
 		"WorkerPanel": WorkerPanel.new(),
-		"ClientPanel": ClientPanel.new(),
-		"ConflictUI": ConflictUI.new(),
 		"BlameUI": BlameUI.new(),
 		"ChatPanel": ChatPanel.new(),
 		"BanterUI": BanterUI.new(),
-		"DailyReport": DailyReport.new(),
 		"RelationPanel": RelationPanel.new(),
 	}
 	for k in made:
@@ -49,14 +48,14 @@ func _init() -> void:
 	for i in range(panels.size()):
 		check("1.%d %s 实例化且活着" % [i + 1, names[i]],
 				is_instance_valid(panels[i]))
-	check("1x. 八个面板都在", panels.size() == 8, str(panels.size()))
+	check("1x. 五个面板都在", panels.size() == 5, str(panels.size()))
 
 	print("── 2 反复开关 10 次 ──")
 	var ok := true
 	var err := ""
 	for i in range(10):
 		for n in panels:
-			if n.has_method("show_with") or n.has_method("show_conflict"):
+			if n.has_method("show_with"):
 				continue
 			if "visible" in n:
 				n.visible = true
@@ -72,26 +71,20 @@ func _init() -> void:
 	check("2. 开关 10 轮不崩", ok, err)
 
 	print("── 3 无数据时的占位 ──")
-	var cp: ClientPanel = panels[1]
-	cp.show_client({}, [])
-	check("3. 客户面板没有数据时不显示（不是空白面板）", not cp.visible)
-	var dr: DailyReport = panels[6]
-	dr.update_from({})
-	check("3b. 结算面板没有数据时保持隐藏", not dr.visible)
-	dr.update_from({"day": 1, "last_settle": {"wages": {"wages": 100, "total": 100}}})
-	await process_frame
-	check("3c. 有结算数据才弹出来", dr.visible)
 	var wp: WorkerPanel = panels[0]
 	wp.update_from({})
 	await process_frame
-	check("3d. 员工面板无数据也不崩（画「等后端…」）", is_instance_valid(wp))
+	check("3. 员工面板无数据也不崩（画「等后端…」）", is_instance_valid(wp))
 	wp.update_from({"workers": []})
 	await process_frame
-	check("3e. 空 worker 列表不崩", is_instance_valid(wp))
-	var bu: BanterUI = panels[5]
+	check("3b. 空 worker 列表不崩", is_instance_valid(wp))
+	var bl: BlameUI = panels[1]
+	bl.hide_meeting()
+	check("3c. 没有会议时复盘会面板保持隐藏", not bl.visible)
+	var bu: BanterUI = panels[3]
 	bu.update_from({})
 	bu.update_from({"banters": []})
-	check("3f. 吐槽气泡无数据不崩", true)
+	check("3d. 吐槽气泡无数据不崩", true)
 
 	print("── 4 长文本不撑破 ──")
 	var font := ThemeDB.fallback_font
@@ -107,12 +100,15 @@ func _init() -> void:
 			UITheme.ellipsis(long, 12).length() == 12,
 			str(UITheme.ellipsis(long, 12).length()))
 	check("4d. 不超长时原样返回", UITheme.ellipsis("短", 12) == "短")
-	var cp2: ClientPanel = panels[1]
-	cp2.show_client({"id": "x", "task": long, "status": "待验收",
-					  "result": long, "reward": 99,
-					  "patience": 10, "patience_max": 100}, [])
+	# ★超长简介塞进员工详情不崩（详情里的状态条与按钮照常画）。
+	var wp2: WorkerPanel = panels[0]
+	wp2.visible = true	# 第 2 节把面板都藏起来了，看不见就不画
+	wp2.update_from({"workers": [{"id": "m3", "blurb": long, "brain_down": true}]})
+	wp2.selected = "m3"
+	wp2.queue_redraw()
 	await process_frame
-	check("4e. ★超长需求/交付物塞进客户面板不崩", cp2.visible and is_instance_valid(cp2))
+	await process_frame
+	check("4e. ★超长简介塞进员工详情不崩", is_instance_valid(wp2) and wp2._sb.is_brain_down())
 
 	print("── 5 风格统一 ──")
 	check("5. V2 面板使用木框暖色底",

@@ -4,10 +4,10 @@
 
 ## 为什么 RNG 状态是硬指标
 
-游戏里所有"随机"都走 Python 全局 `random`：客户到哪个需求、谁被派去抢单、
+游戏里所有"随机"都走 Python 全局 `random`：闲聊说几句、谁往茶水间溜达、
 关系值怎么变、复盘会谁先开口…… 如果只存游戏状态、不存 `random.getstate()`，
 那么读档之后**下一次掷骰子就和存档时那局完全不是一条时间线**了——
-玩家看到的是"同样的局面，但客户全换了一批"，这不叫读档，叫重开。
+玩家看到的是"同样的局面，但人全换了一批"，这不叫读档，叫重开。
 
 ## 快照一致性
 
@@ -20,7 +20,6 @@
     d = save.load_game("第3天手动")
     save.restore(g, d)                        # 读档（会停主循环）
 """
-import copy
 import json
 import os
 import random
@@ -30,7 +29,11 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 SAVE_DIR = os.environ.get("AI_OFFICE_SAVE_DIR") or os.path.join(ROOT, "data", "saves")
 
-FORMAT = 1        # 存档格式版本。改字段就 +1，读旧档时按版本走兼容分支
+FORMAT = 2        # 存档格式版本。改字段就 +1，读旧档时按版本走兼容分支
+# ★v2（客户系统下线）：不再写 money / rep / neg_days / game_over_reason /
+#   clients / finished / slots / conflicts / failures / cf_store。
+#   v1 的旧存档照样能读：restore() 一律用 .get() 取值，
+#   旧档里那些字段读进来就被丢掉（客户相关的状态在读档时清空，见 restore）。
 
 
 # ── RNG 状态 ────────────────────────────────────────────────────────────────
@@ -79,16 +82,6 @@ def _worker_to_dict(w):
     }
 
 
-def _client_to_dict(c):
-    return {
-        "id": c.id, "task": c.task, "kind": c.kind, "persona": c.persona,
-        "reward": c.reward, "patience_max": c.patience_max,
-        "patience": round(c.patience, 3), "slot": c.slot,
-        "served_by": c.served_by, "status": c.status, "result": c.result,
-        "grab_tick": c.grab_tick, "pos": [c.pos[0], c.pos[1]],
-    }
-
-
 def snapshot(game, name="", auto=False, why="") -> dict:
     """把 Game 抓成可 JSON 化的字典。**不持锁**，由调用方决定。"""
     import relations as REL
@@ -103,37 +96,25 @@ def snapshot(game, name="", auto=False, why="") -> dict:
         "day": game.day,
         "tick": game.tick,
         "day_start": game._day_start,
-        "money": game.money,
-        "rep": game.rep,
-        "neg_days": game.neg_days,
-        "game_over_reason": game.game_over_reason,
+        # ★不再写 money / rep / neg_days / game_over_reason / clients / finished /
+        #   slots / conflicts / failures：这套旧模拟经营玩法的数据已经下线，
+        #   旧存档里还留着它们（读档时会被丢掉，见 restore 的说明）。
+        #   旧存档的识别不靠这些字段：list_saves() 仍然从存档文件里读
+        #   "rep"（旧档的声誉不是初始值 50），前端 save_ui.gd 据此提示"旧版存档"。
         # 五人
         "workers": [_worker_to_dict(w) for w in game.workers.values()],
-        # 客户
-        "clients": [_client_to_dict(c) for c in game.clients],
-        "finished": [_client_to_dict(c) for c in game.finished],
-        # slots 存的是 Client **对象**，json 存不了。
-        # 存 id，读回时从 clients 列表里映射回对象——客户列表本身就是真相，
-        # slots 只是"哪个接待位被占了"的索引。
-        "slots": {str(k): (v.id if hasattr(v, "id") else v)
-                  for k, v in game.slots.items()},
-        "conflicts": list(game.conflicts.keys()) if hasattr(game.conflicts, "keys")
-        else list(game.conflicts),
-        "conflict_data": copy.deepcopy(game.conflicts),
-        # 关系矩阵 + 三个冷却表
+        # 关系矩阵 + 两个冷却表
         "relations": REL.to_dict(),
         # ★冷却表的键是**元组**（banter.mark 写的是 ("p","m3|flash") / ("w","m3")），
         #   json 只认字符串键——原样抄进去会让 /api/newday 直接 500。
-        #   这个 bug 单测抓不到：test_save 建的游戏从没人吐槽过，三个表都是空的；
+        #   这个 bug 单测抓不到：test_save 建的游戏从没人吐槽过，表都是空的；
         #   真打 30 天时只要触发过一次吐槽就必炸。是实玩抓出来的。
-        "cf_store": {_tuple_key_to_str(k): v for k, v in game._cf_store.items()},
         "bt_store": {_tuple_key_to_str(k): v
                      for k, v in game._bt_store.items()},
         "blame_store": dict(game._blame_store),
         # 事件与日志（计划要求最近 100 条）
         "events": list(game.events)[-100:],
         "log": list(game.log)[-100:],
-        "failures": list(game.failures)[-50:],
         "banters": list(game.banters)[-6:],
         "last_settle": game.last_settle,
         "meeting": game.meeting,
@@ -160,10 +141,11 @@ def restore(game, d) -> dict:
         game.day = int(d["day"])
         game.tick = int(d.get("tick", 0))
         game._day_start = int(d.get("day_start", 0))
-        game.money = d["money"]
-        game.rep = d["rep"]
-        game.neg_days = int(d.get("neg_days", 0))
-        game.game_over_reason = d.get("game_over_reason")
+        # ★不再还原 money / rep / neg_days / game_over_reason：
+        #   这套旧模拟经营玩法的账已经下线（见 game.py 文件头），新存档也不再写
+        #   这些字段。旧存档里残留的值一律丢掉——尤其 game_over_reason：
+        #   旧档里存的是"资金为负连续 3 天"这种已经不存在的失败原因，
+        #   读回来会让界面显示一句骗人的"游戏结束"。
 
         game.workers = {}
         for wd in d.get("workers", []):
@@ -194,16 +176,12 @@ def restore(game, d) -> dict:
                 game._freeze_brain(w)
             game.workers[w.who] = w
 
-        # 旧存档里可能带客户数据；经营玩法已停用（命令即工单），读档时一律清空，不让关闸失效。
-        game.clients = []
-        game.finished = []
-        game.slots = {}
-
-        # ★客户没了，员工"手上有活"的状态必须一起清掉，否则人会被永久卡死。
-        #   job 存的是"我正在给哪个客户干活"（一个 client id，见 game.py Worker.__init__）。
-        #   客户被清空后这个 id 指向一个**不存在的客户**，而主循环里 w.job 是一路闸门：
-        #   不接新单（_auto_grab 只挑 w.job 为空的）、不空闲（_wander_idle 跳过有活的人）、
-        #   连"活干完了"的通知也找不到对应客户 —— 表现就是站在工位上一动不动，像卡死。
+        # ★旧存档里带着客户系统的遗产（指向客户的 job、去接待处的指令、
+        #   抢单冲突、没送完的交付物……），客户系统下线后这些一律作废。
+        #   不作废的话，读完档的人会永远停在"有活"的状态里：
+        #   job 指向一个已经不存在的客户，而主循环里 w.job 是一路闸门
+        #   （_wander_idle 跳过有活的人、闲聊也不触发），
+        #   表现就是站在工位上一动不动，像卡死。
         for w in game.workers.values():
             # 去接待处的指令也是指认某个客户的（玩家只能下工位/茶水间/摸鱼/会议室，
             # 接待处只有接单/送单流程会去）。客户没了，这个目标就不存在了，指令要撤。
@@ -230,75 +208,14 @@ def restore(game, d) -> dict:
             if not w.brain_down and not w.quit:
                 w.acting = "在工位待命"
 
-        by_id = {c.id: c for c in game.clients}   # 客户已清空 ⇒ by_id 必为空
-        # 旧档只存订单 ID，不能恢复成 None；那会让整个 /api/state 崩溃。
-        # 冲突以客户为键，客户没了 ⇒ 旧冲突一条也回不来（下面循环里 c 恒为 None）。
-        game.conflicts = {}
-        conflict_data = d.get("conflict_data")
-        conflict_data = conflict_data if isinstance(conflict_data, dict) else {}
-        for cid in d.get("conflicts") or []:
-            c = by_id.get(cid)
-            cf = conflict_data.get(cid)
-            cf = cf if isinstance(cf, dict) else {}
-            peers = [cf.get("a"), cf.get("b")]
-            if len(set(peers)) != 2 or any(who not in game.workers for who in peers):
-                peers = [w.who for w in game.workers.values() if w.job == cid]
-            peers = [who for who in peers if not game.workers[who].brain_down
-                     and not game.workers[who].quit and game.workers[who].job in (None, cid)]
-            if c and c.status == "冲突中" and len(peers) == 2 and not cf.get("judged"):
-                game.conflicts[cid] = {"client":cid, "a":peers[0], "b":peers[1],
-                                      "task":c.task, "lines":copy.deepcopy(cf.get("lines") or []),
-                                      "judged":False}
-                for who in peers:
-                    game.workers[who].job = cid
-            else:
-                # 找不回争抢者时返还订单，保留其他客户的待验收交付物。
-                if c and c.status == "冲突中":
-                    c.status, c.served_by = "等待", None
-                    c.grab_tick = game.tick + 90
-                for w in game.workers.values():
-                    if w.job == cid:
-                        w.job, w.order, w.busy, w.working = None, None, False, 0
-                        if not w.brain_down and not w.quit:
-                            w.acting = "在工位待命"
-        # 关闭进程会结束交付线程；保留已生成成果，未生成的订单释放后重新派单。
-        recovered_waiting = []
-        recovered_deliveries = []
-        for c in game.clients:
-            interrupted = c.status in ("服务中", "抢单中") or (
-                c.status == "等待" and c.served_by is not None)
-            if not interrupted:
-                continue
-            owner = game.workers.get(c.served_by)
-            if c.result and owner:
-                c.status = "待验收"
-                owner.job = c.id
-                recovered_deliveries.append(c.id)
-            else:
-                c.status, c.served_by = "等待", None
-                c.grab_tick = game.tick + 90
-                recovered_waiting.append(c.id)
-            for w in game.workers.values():
-                if w.job != c.id:
-                    continue
-                if c.status != "待验收" or w is not owner:
-                    w.job = None
-                w.order, w.busy, w.working, w.need = None, False, 0, 0
-                if not w.brain_down and not w.quit:
-                    w.acting = "在工位待命"
+        # ★旧存档里的抢单冲突与未完成交付物随之作废：它们全都挂在客户上，
+        #   客户系统已经下线，读回来只会变成指向不存在对象的悬空引用。
         REL.from_dict(d.get("relations") or {})
-        # 冲突冷却表里 ("client", 客户id) 这一类键指的是已经不存在的客户，
-        # 读档不再保留这种悬空引用；员工之间的对撞冷却和全局冷却照旧。
-        cf_store = {_str_key_to_tuple(k): v
-                    for k, v in (d.get("cf_store") or {}).items()}
-        game._cf_store = {k: v for k, v in cf_store.items()
-                          if not (isinstance(k, tuple) and k and k[0] == "client")}
         game._bt_store = {_str_key_to_tuple(k): v
                           for k, v in (d.get("bt_store") or {}).items()}
         game._blame_store = dict(d.get("blame_store") or {})
         game.events = list(d.get("events") or [])
         game.log = list(d.get("log") or [])
-        game.failures = list(d.get("failures") or [])
         game.banters = list(d.get("banters") or [])
         game.last_settle = d.get("last_settle")
         game.meeting = None
@@ -310,10 +227,6 @@ def restore(game, d) -> dict:
                         w.acting = "散会"
             game.send_all_back()
             game.event("meeting_end", "读档后结束上次会议，可重新召集")
-        if recovered_waiting:
-            game.event("restore", "上次未完成的 %d 笔订单已回到等待派单" % len(recovered_waiting))
-        if recovered_deliveries:
-            game.event("restore", "上次已生成的 %d 份交付物已保留，等待验收" % len(recovered_deliveries))
 
         st = _state_from_json(d.get("rng") or [])
         rng_ok = st is not None

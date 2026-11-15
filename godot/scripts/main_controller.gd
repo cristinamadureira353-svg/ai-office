@@ -2,8 +2,11 @@ class_name MainController
 extends Node2D
 ## 主控制器：装配场景、角色、HUD，处理玩家输入。
 ##
-## M2-9 起：面板全部可点了 —— 点角色开指令面板、抢单冲突弹裁决、
-## 复盘会显示记录、聊天走 SSE 流式。
+## 面板可点了 —— 点角色开指令面板、复盘会显示记录、聊天走 SSE 流式。
+##
+## ★旧经营玩法（假客户上门 / 抢单冲突 / 每日结算）的三个面板已整体移除：
+##   客户不再生成、assign 接单指令被服务端拒绝、冲突与结算都成了死代码。
+##   真任务失败改由甩锅机制处理（_poll_blame 读 /api/office/panel）。
 
 const WORKER_SCRIPT := "res://scripts/worker.gd"
 ## 没有真实 Bot 团队时，办公室保留游戏自带的五个员工。
@@ -38,7 +41,6 @@ var rel_panel: RelationPanel
 var worker_panel: WorkerPanel
 ## Chief 的主管位节点（会议室主桌一头）。
 var _chief_desk: ChiefDesk = null
-var conflict_ui: ConflictUI
 var blame_ui: BlameUI
 var chat_panel: ChatPanel
 var banter_ui: BanterUI
@@ -124,7 +126,7 @@ func _ready() -> void:
 	if z != "" and z.is_valid_float() and office.cam_dir.cam:
 		office.cam_dir.cam.zoom = Vector2(float(z), float(z))
 
-	print("[MAIN] 装配完成：%d 个角色 / %d 个面板" % [workers.size(), 8])
+	print("[MAIN] 装配完成：%d 个角色 / %d 个面板" % [workers.size(), 7])
 
 
 func _build_panels(layer: CanvasLayer) -> void:
@@ -178,13 +180,6 @@ func _build_panels(layer: CanvasLayer) -> void:
 			hud.toast("已选中 %s · 右侧查看指令，卡片上可直接聊天" % UITheme.name_of(who))
 		_refresh_detail_hud())
 	layer.add_child(worker_panel)
-
-	conflict_ui = ConflictUI.new()
-	conflict_ui.name = "ConflictUI"
-	conflict_ui.judge_pressed.connect(
-		func(cid, kind): link.send_command("", "judge", cid, true, kind))
-	link.judgement_done.connect(conflict_ui.complete_judgement)
-	layer.add_child(conflict_ui)
 
 	blame_ui = BlameUI.new()
 	blame_ui.name = "BlameUI"
@@ -307,7 +302,6 @@ func _request_command(who: String, action: String, arg) -> void:
 	match action:
 		"goto":
 			message = "正在安排 %s %s…" % [name, {"desk":"回工位", "lounge":"去休息", "slack":"去摸鱼"}.get(str(arg), "移动")]
-		"assign": message = "正在安排 %s 接单…" % name
 		"off": message = "正在安排 %s 今天轮休…" % name
 		"back": message = "正在恢复 %s 的排班…" % name
 		"meeting": message = "正在召集会议…"
@@ -768,12 +762,7 @@ func _on_state(d: Dictionary) -> void:
 			if not p.is_empty():
 				node.set_path(p, tgt)
 
-	# 冲突 / 复盘会
-	var cfs: Array = d.get("conflicts", [])
-	if not cfs.is_empty():
-		conflict_ui.show_conflict(cfs[0])
-	else:
-		conflict_ui.hide_conflict()
+	# 复盘会（会议提示 / 甩锅复盘）。抢单冲突面板已随旧经营玩法移除。
 	var mt: Dictionary = UITheme.dict_of(d, "meeting")
 	if not mt.is_empty():
 		blame_ui.show_meeting(mt)

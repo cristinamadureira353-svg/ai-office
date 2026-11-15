@@ -1,140 +1,78 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
-import { createRequire } from 'node:module';
-import { fixture } from './fixture.mjs';
+import { readdir, rm } from 'node:fs/promises';
+import { join } from 'node:path';
+import { fixture, legacySave, writeSave } from './fixture.mjs';
 
-test('conflict popup: four real mouse choices reach Game.judge and close the modal', {timeout:90000}, async t => {
-  const f = await fixture({conflict:true});
-  const {chromium} = createRequire(join(process.env.AI_OFFICE_TEST_NODE_MODULES, 'package.json'))('playwright');
-  const evidence = resolve(process.env.AI_OFFICE_TEST_EVIDENCE);
-  await mkdir(evidence, {recursive:true});
-  let browser;
-  const errors = [], commands = [], replies = [], results = [], responseReads = [];
-  const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
-  const waitFor = async predicate => {
-    for (let i=0; i<40; i++) { if (await predicate()) return; await pause(100); }
-    throw new Error('Popup click did not complete the expected judgement');
-  };
+// ★旧的抢单冲突玩法整条下线了：Game.Client / clients / slots / conflicts 全没了，
+// 冲突弹窗（四个鼠标选项 → Game.judge）也不存在了。
+// 这个文件现在测的是**留下来的那条线**：旧存档里的客户和冲突一律不复活。
+const LEGACY_ID = 'legacy-v1-save';
+
+test('customer and conflict gameplay is gone: a legacy save never resurrects clients or conflicts', {timeout:60000}, async t => {
+  const f = await fixture();
   try {
-    assert.equal((await (await f.post('/api/settings', f.settings)).json()).ok, true);
-    await t.test('reopening drops the seeded conflict and client through the restore guard', async () => {
-      const before = await f.get('/api/state');
-      // 先确认注入的冲突与冲突客户在关闭前确实存在，否则"被清空"无从谈起。
-      assert.equal(before.conflicts.length, 1, 'a conflict is live before closing');
-      assert.ok(before.clients.some(c => c.id === before.conflicts[0].client), 'the conflicting client is present before closing');
+    await t.test('a fresh game carries no clients and no conflicts', async () => {
+      assert.equal((await (await f.post('/api/settings', f.settings)).json()).ok, true);
+      const fresh = await f.get('/api/state');
+      assert.deepEqual(fresh.clients, [], 'clients are gone with the gameplay');
+      assert.deepEqual(fresh.conflicts, [], 'conflicts are gone with the gameplay');
+      assert.equal(fresh.workers.length, 5);
+    });
+
+    await t.test('loading a legacy save drops its clients, conflicts and economy', async () => {
+      const fresh = await f.get('/api/state');
+      // 手搓一份 v1 旧档：3 个客户 + 1 个冲突 id + money/rep + 指向客户的员工状态。
+      const legacy = legacySave(fresh.workers);
+      assert.equal(legacy.clients.length, 3, 'the legacy save really carries three clients');
+      assert.equal(legacy.conflicts.length, 1, 'the legacy save really carries one conflict id');
+      assert.equal(legacy.money, 869, 'the legacy save really carries the old money');
+      assert.equal(legacy.rep, 59, 'the legacy save really carries the old reputation');
+      await writeSave(f, LEGACY_ID, legacy);
+
+      const loaded = await (await f.post('/api/load', {id: LEGACY_ID})).json();
+      assert.equal(loaded.ok, true, 'the legacy save still loads: ' + (loaded.msg || ''));
+
+      const after = await f.get('/api/state');
+      assert.deepEqual(after.clients, [], 'restore must not resurrect legacy clients');
+      assert.deepEqual(after.conflicts, [], 'restore must not resurrect legacy conflicts');
+      // 状态契约里这两个 key 直接没了（客户与交付物整套下线）。
+      assert.equal('finished' in after, false, 'the deliveries key is gone from the state contract');
+      assert.equal('neg_days' in after, false, 'the negative-days key is gone from the state contract');
+      // 旧经济只留墓碑：钱恒为 0，声誉恒为 50，旧档里的数字不复活。
+      assert.equal(after.money, 0, 'money is a tombstone now, the legacy value is dropped');
+      assert.equal(after.rep, 50, 'reputation is a tombstone now, the legacy value is dropped');
+      // 破产机制已取消：旧档里那句"资金为负连续 3 天"不能显示出来。
+      assert.equal(after.game_over, null, 'the legacy bankruptcy reason must not surface');
+      // 旧档的其它内容照旧读回来（否则就不是"读档"，是"丢档"）。
+      assert.equal(after.day, 3, 'the rest of the legacy save is restored');
+      assert.ok(after.tick >= 81175, 'the legacy tick is restored, not rewound');
+      assert.equal(after.workers.length, 5);
+      for (const w of after.workers) {
+        assert.equal(w.job, null, w.id + ' must not keep a job pointing at a dead client');
+        assert.equal(w.eff, 1, w.id + ' must not keep the efficiency of a dead job');
+        assert.doesNotMatch(w.acting, /接待处/, w.id + ' must not keep walking to the reception desk');
+      }
+    });
+
+    await t.test('reopening inherits the legacy save without its clients', async () => {
+      // dispose 时后端会自己存一份"关闭前进度"；删掉它，
+      // 让重开时继承的就是那份旧档（重开路径走的是 miniapp_bridge 的自动继承）。
+      const dir = join(f.dataDir, 'saves');
+      for (const file of await readdir(dir)) {
+        if (file !== LEGACY_ID + '.json') await rm(join(dir, file), {force: true});
+      }
       await f.dispose();
       await f.restart();
-      const after = await f.get('/api/state');
-      // 经营玩法已停用（命令即工单）：读档一律清空客户与冲突（防盗门），
-      // 所以重开后冲突与其客户都不复存在，而非"带着对话与进度存活"。
-      assert.deepEqual(after.conflicts, [], 'reopening clears the pending conflict');
-      assert.deepEqual(after.clients, [], 'reopening clears the conflicting client');
-      // 经济不因读档丢失，页面不崩。
-      assert.equal(after.day, before.day);
-      assert.equal(after.money, before.money);
+      const reopened = await f.get('/api/state');
+      assert.equal(reopened.day, 3, 'the reopened MiniApp inherited the legacy save');
+      assert.deepEqual(reopened.clients, [], 'reopening keeps legacy clients cleared');
+      assert.deepEqual(reopened.conflicts, [], 'reopening keeps legacy conflicts cleared');
+      assert.equal(reopened.money, 0);
+      assert.equal(reopened.rep, 50);
     });
-    browser = await chromium.launch({headless:true, executablePath:process.env.AI_OFFICE_TEST_CHROMIUM,
-      args:['--use-angle=swiftshader', '--enable-unsafe-swiftshader']});
-    const page = await browser.newPage({viewport:{width:879,height:534}});
-    page.on('pageerror', error => errors.push(error.message));
-    page.on('console', message => { if (message.type()==='error') errors.push(message.text()); });
-    page.on('request', request => {
-      if (request.url()===f.base+'/api/command' && request.method()==='POST') commands.push(JSON.parse(request.postData()));
-    });
-    page.on('response', response => {
-      if (response.url()===f.base+'/api/command')
-        responseReads.push(response.json().then(reply => replies.push(reply)).catch(error => errors.push(error.message)));
-    });
-    await page.goto(f.base+'/ai-office');
-    const canvas = page.frameLocator('#game').locator('#canvas');
-    await canvas.waitFor({state:'visible'});
-    await page.waitForFunction(() => document.querySelector('#game').contentWindow.AIOfficeStream && !document.querySelector('#game').contentWindow.document.querySelector('#status'));
-    await pause(600);
-    const button = index => {
-      const {width,height} = page.viewportSize();
-      const scale = Math.min(width/1120, height/720);
-      const x = (width/scale-620)/2 + 24 + index*(135.5+10) + 135.5/2;
-      const y = (height/scale-390)/2 + 390 - 60 + 18;
-      return {x:x*scale,y:y*scale};
-    };
-    const stage = process.env.AI_OFFICE_CONFLICT_STAGE || 'after';
-    await page.screenshot({path:join(evidence, 'conflict-'+stage+'-popup.png')});
-    for (const [index,kind] of ['a','b','reject','scold'].entries()) {
-      await t.test('choice '+kind, async () => {
-        const conflict = await f.resetConflict();
-        await pause(700);
-        const before = commands.length;
-        await canvas.click({position:button(index)});
-        await waitFor(() => commands.length > before);
-        assert.equal(commands.length, before+1, 'one click sends one judgement');
-        assert.equal(commands.at(-1).action, 'judge');
-        assert.equal(commands.at(-1).arg, conflict.client);
-        assert.equal(commands.at(-1).kind, kind, 'the API receives the chosen kind');
-        await waitFor(async () => !(await f.get('/api/state')).conflicts.length);
-        const state = await f.get('/api/state');
-        const customer = state.clients.find(c => c.id===conflict.client);
-        const m3 = state.workers.find(w => w.id==='m3'), flash = state.workers.find(w => w.id==='flash');
-        const winner = {a:'m3',b:'flash'}[kind] || null;
-        assert.equal(customer.served_by, winner);
-        assert.equal(customer.status, winner ? '抢单中' : '等待');
-        assert.equal(m3.mood, {a:73,b:62,reject:65,scold:67}[kind]);
-        assert.equal(flash.mood, {a:62,b:73,reject:65,scold:67}[kind]);
-        if (!winner) assert.equal(customer.patience, 150);
-        await pause(700);
-        // 裁决成功后再次点击原按钮位置，不应再发请求，证明弹窗已关闭。
-        await canvas.click({position:button(index)});
-        await pause(200);
-        assert.equal(commands.length, before+1, 'resolved modal no longer intercepts clicks');
-        results.push({kind,client:conflict.client,winner,status:customer.status,mood:{m3:m3.mood,flash:flash.mood}});
-        await page.screenshot({path:join(evidence, 'conflict-'+stage+'-'+kind+'-resolved.png')});
-      });
-    }
-    await t.test('failed request shows feedback and allows a real retry', async () => {
-      const conflict = await f.resetConflict();
-      await pause(700);
-      await page.route(f.base+'/api/command', route => route.fulfill({status:200,
-        contentType:'application/json',body:JSON.stringify({ok:false,msg:'测试连接失败，请重新选择'})}), {times:1});
-      const before = commands.length, replyBefore = replies.length;
-      await canvas.click({position:button(0)});
-      await waitFor(() => replies.length > replyBefore);
-      assert.equal(replies.at(-1).ok, false);
-      assert.equal((await f.get('/api/state')).conflicts[0].client, conflict.client, 'failed request keeps the unresolved order');
-      await pause(500);
-      await page.screenshot({path:join(evidence, 'conflict-'+stage+'-retry-feedback.png')});
-      await canvas.click({position:button(1)});
-      await waitFor(async () => !(await f.get('/api/state')).conflicts.length);
-      assert.equal(commands.length, before+2);
-      assert.equal(commands.at(-1).kind, 'b');
-      assert.equal((await f.get('/api/state')).clients.find(c => c.id===conflict.client).served_by, 'flash');
-      results.push({scenario:'failure-retry',client:conflict.client,winner:'flash'});
-    });
-    await t.test('slow response disables all choices and submits only once', async () => {
-      await f.resetConflict();
-      await pause(700);
-      await page.route(f.base+'/api/command', async route => { await pause(1000); await route.continue(); }, {times:1});
-      const before = commands.length;
-      await canvas.click({position:button(0)});
-      await canvas.click({position:button(3)});
-      await pause(100);
-      await page.screenshot({path:join(evidence, 'conflict-'+stage+'-submitting.png')});
-      assert.equal(commands.length, before+1, 'clicking another choice during submission sends no second request');
-      await waitFor(async () => !(await f.get('/api/state')).conflicts.length);
-      assert.equal(commands.at(-1).kind, 'a');
-      results.push({scenario:'slow-response',requests:1});
-    });
-    const received = (await readFile(join(f.dataDir,'commands.jsonl'),'utf8').catch(() => '')).trim().split('\n').filter(Boolean).map(JSON.parse);
-    assert.equal(received.filter(c => c.action==='judge').length, 6, 'real backend processed four choices, a retry and one delayed submission');
-    assert.equal((await readdir(f.dataDir)).includes('network-attempt'), false);
-    assert.equal((await readdir(f.dataDir)).includes('calls.jsonl'), false, 'judgement verification consumes no model calls');
-    await Promise.all(responseReads);
-    assert.deepEqual(errors, []);
   } finally {
-    await Promise.all(responseReads);
-    await writeFile(join(evidence, 'conflict-'+(process.env.AI_OFFICE_CONFLICT_STAGE || 'after')+'-results.json'), JSON.stringify({commands,replies,results,errors},null,2));
-    await browser?.close();
     await f.dispose();
-    await rm(f.scratch,{recursive:true,force:true});
+    await rm(f.scratch, {recursive: true, force: true});
   }
 });

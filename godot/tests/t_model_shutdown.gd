@@ -50,7 +50,7 @@ func run() -> void:
 	var sb := StatsBar.new()
 	root.add_child(sb)
 	sb.set_worker({"brain_down":true})
-	check("状态条显示完整宕机文案", sb._status_text() == "脑袋宕机了")
+	check("状态条显示完整宕机文案", sb.status_text() == "脑袋宕机了")
 	sb.free()
 	var sse := SseChat.new()
 	root.add_child(sse)
@@ -65,9 +65,7 @@ func run() -> void:
 	host.size = Vector2(1600, 1000)
 	root.add_child(host)
 	var detail := WorkerPanel.new()
-	var client := ClientPanel.new()
 	host.add_child(detail)
-	host.add_child(client)
 	await process_frame
 	var workers: Array = [
 		{"id":"kimi", "brain_down":true, "brain_checking":false},
@@ -92,10 +90,6 @@ func run() -> void:
 	await process_frame
 	detail._gui_input(click)
 	check("恢复检测进行时禁用重复点击", detail._btns.is_empty() and commands.size() == 1)
-	client.show_client({"id":"quota", "status":"等待", "task":"做一单"}, workers)
-	await process_frame
-	await process_frame
-	check("客户派单排除宕机员工并保留正常员工", client._btns.size() == 1 and client._btns[0].who == "longcat")
 	host.free()
 	var link := BackendLink.new()
 	root.add_child(link)

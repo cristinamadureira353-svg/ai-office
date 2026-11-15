@@ -1,5 +1,5 @@
 extends SceneTree
-## 长交付物必须可读，按钮必须留在框内；Esc 必须关闭当前聊天。
+## 长内容必须可读，按钮必须留在框内；Esc 必须关闭当前聊天。
 
 var passed := 0
 var failed := 0
@@ -17,27 +17,10 @@ func _init() -> void:
 	var host := Control.new()
 	host.size = Vector2(1280, 720)
 	root.add_child(host)
-	var client := ClientPanel.new()
 	var chat := ChatPanel.new()
-	host.add_child(client)
 	host.add_child(chat)
 	await process_frame
 	var long_result := "第一段：完整交付内容应留在可滚动区域里。\n第二段：不能挤走验收按钮。".repeat(24)
-	client.show_client({"id":"bounds", "task":"客户需求".repeat(40), "status":"待验收", "result":long_result, "reward":99999999}, [])
-	await process_frame
-	await process_frame
-	var panel_rect := Rect2(client.size.x - ClientPanel.W - 16, 64, ClientPanel.W, ClientPanel.H)
-	if client.has_method("_panel_rect"):
-		panel_rect = client.call("_panel_rect")
-	var inside := true
-	for button in client._btns:
-		inside = inside and panel_rect.grow(-16).encloses(button.rect)
-	check("长交付物的验收按钮留在面板内", inside and client._btns.size() == 2)
-	var body := client.get_node_or_null("ClientBody") as RichTextLabel
-	check("完整交付物保留在可滚动正文中", body != null and body.text.contains(long_result) and body.scroll_active)
-	if body:
-		check("正文与验收按钮保持间隔", Rect2(body.position, body.size).end.y + 12 <= client._btns[0].rect.position.y)
-	client.show_client({}, [])
 	chat.open_with("m3")
 	await process_frame
 	var escape := InputEventKey.new()
@@ -45,7 +28,7 @@ func _init() -> void:
 	escape.pressed = true
 	Input.parse_input_event(escape)
 	await process_frame
-	check("隐藏客户面板不拦截聊天 Esc", not chat.visible)
+	check("Esc 关闭当前聊天", not chat.visible)
 	chat.open_with("longcat")
 	chat.push_user("需要保留完整历史。".repeat(20))
 	chat.begin_stream()
@@ -122,21 +105,5 @@ func _init() -> void:
 		save_inside = save_inside and save._panel_rect().grow(-16).encloses(button.rect)
 	check("长存档列表和操作按钮都留在框内", save_inside)
 	save.close()
-	var conflict := ConflictUI.new()
-	host.add_child(conflict)
-	await process_frame
-	conflict.show_conflict({"client":"test", "a":"longcat", "b":"step5", "task":long_result, "lines":[]})
-	await process_frame
-	await process_frame
-	var judgements: Array = []
-	conflict.judge_pressed.connect(func(id, kind): judgements.append([id, kind]))
-	for button in conflict._buttons:
-		var click := InputEventMouseButton.new()
-		click.button_index = MOUSE_BUTTON_LEFT
-		click.pressed = true
-		click.position = button.rect.get_center()
-		conflict._gui_input(click)
-		conflict.complete_judgement("test", false, "模拟重试")
-	check("裁决按钮布局调整后仍发出对应选择", judgements == [["test","a"],["test","b"],["test","reject"],["test","scold"]])
 	print("UI BOUNDS: %d passed, %d failed" % [passed, failed])
 	quit(0 if failed == 0 else 1)

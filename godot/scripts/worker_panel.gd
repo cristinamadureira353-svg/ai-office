@@ -3,7 +3,7 @@ extends Control
 ## 角色指令面板（DESIGN 9.2「点角色」）
 ##
 ## 左下常驻：列出五个员工的状态条；点一个展开详情和指令。
-## 指令：去茶水间 / 去摸鱼 / 开会 / 跟他说话（打开 ChatPanel）。
+## 指令：去休息 / 去摸鱼 / 开会 / 跟他说话（打开 ChatPanel）。
 ## 所有可点区域都有悬停反馈，Esc 关闭展开。
 
 signal cmd_requested(who, action, arg)
@@ -179,12 +179,21 @@ func _bot_status(who: String) -> String:
 	var stale = panel.get("stale")
 	if stale is Dictionary and stale.has(who):
 		return "stale"
+	return String(_bot_task(who).get("status", ""))
+
+
+## 这个工位上的真实 Bot 手上那单：{"status": 状态, "title": 任务标题}。
+## 绑上了但手上没活 ⇒ {"status": "idle"}；没绑定或没有面板 ⇒ 空字典。
+func _bot_task(who: String) -> Dictionary:
+	var panel = state.get("bot_panel")
+	if not (panel is Dictionary) or not bool(panel.get("ready", false)):
+		return {}
 	var bindings = panel.get("bindings")
 	if not (bindings is Dictionary) or not bindings.has(who):
-		return ""
+		return {}
 	var bot_id := String(bindings[who])
 	if bot_id.is_empty():
-		return ""
+		return {}
 	var batches: Array = panel.get("batches", [])
 	var i := batches.size() - 1
 	while i >= 0:
@@ -192,9 +201,20 @@ func _bot_status(who: String) -> String:
 		if batch is Dictionary:
 			for task in batch.get("tasks", []):
 				if String(task.get("bot_id", "")) == bot_id:
-					return String(task.get("status", ""))
+					return {"status": String(task.get("status", "")),
+						"title": String(task.get("title", ""))}
 		i -= 1
-	return "idle"
+	return {"status": "idle", "title": ""}
+
+
+## 状态条要的真 Bot 状态：状态 / 手上的活。
+## 字段一律防御性读取：后端正在改，快照里少一个字段就退到默认值。
+func _bot_info(who: String) -> Dictionary:
+	var task := _bot_task(who)
+	return {
+		"status": String(task.get("status", "")),
+		"title": String(task.get("title", "")),
+	}
 
 
 func _bot_badge_text(status: String) -> String:
@@ -259,10 +279,14 @@ func _draw_row(r: Rect2, who: String, sel: bool) -> void:
 				"[%s]" % _bot_badge_text(bot_status), UITheme.SMALL,
 				_bot_badge_color(bot_status), HORIZONTAL_ALIGNMENT_RIGHT)
 
-	UITheme.bar(self, Rect2(Vector2(x, r.position.y + 66), Vector2(width, 4)),
-			float(w.get("stamina", 100)) / 100.0, UITheme.GOOD)
-	UITheme.bar(self, Rect2(Vector2(x, r.position.y + 76), Vector2(width, 4)),
-			float(w.get("mood", 70)) / 100.0, UITheme.WARN)
+	# 体力/心情那两条杠删了：旧经营玩法下线后体力恒定满格（纯噪音），
+	# 心情只剩团建时会跳一下。腾出来的位置显示真任务标题——这才是玩家
+	# 想在概览上看到的东西。
+	var task_title := String(_bot_task(who).get("title", ""))
+	if task_title.is_empty():
+		task_title = "手上没活"
+	UITheme.text_in(self, _font, Rect2(x, r.position.y + 66, width, 22),
+			UITheme.fit(task_title, width, _font, UITheme.SMALL), UITheme.SMALL, UITheme.TEXT_DIM)
 
 
 ## 一个真实 Bot 占的工位：标题是 Bot 的名字，右边小字是它在团队里的角色。
@@ -367,17 +391,21 @@ func _draw_detail(who: String) -> void:
 	#   等于每帧建一次节点，redraw 频繁时会把场景树堆满。
 	var sb := _sb
 	sb.set_worker(w)
+	sb.set_bot(_bot_info(who))
 	sb.position = Vector2(x, r.position.y + 118)
 	sb.size = Vector2(StatsBar.W, sb.total_height())
 
+	# 这一行说的是真 Bot 此刻在干什么。旧经营玩法（客户 / 接单）已停用，
+	# 不再报"正在服务一个客户"，也不承诺"暂停接单"这种已经不存在的活。
+	var bot_status := String(_bot_task(who).get("status", ""))
 	var blurb := "手上没活"
-	if w.get("job"):
-		blurb = "正在服务一个客户"
+	if bot_status == "running":
+		blurb = "正在处理任务"
 	if w.get("brain_down", false):
-		blurb = "脑袋宕机了 · 暂停接单和行动"
-	UITheme.text_in(self, _font, Rect2(x, r.position.y + 232, pw - 48, 22), blurb, UITheme.SMALL,
+		blurb = "脑袋宕机了 · 暂停行动"
+	UITheme.text_in(self, _font, Rect2(x, r.position.y + 180, pw - 48, 22), blurb, UITheme.SMALL,
 			UITheme.BAD if w.get("brain_down", false) else UITheme.TEXT)
-	var y := r.position.y + 262
+	var y := r.position.y + 210
 	if w.get("brain_down", false):
 		var checking := bool(w.get("brain_checking", false))
 		_button(Rect2(x, y, pw - 48, 44), "正在检查恢复…" if checking else "额度恢复后 · 重启脑袋", "reboot", who, not checking)

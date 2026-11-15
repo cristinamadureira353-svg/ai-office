@@ -127,7 +127,7 @@ test('a new player can configure a relocated standalone package with one model K
     assert.match(template, /LONGCAT_API_KEY=\s*\n/);
     await writeFile(f.settings.envFile,'LONGCAT_API_KEY=isolated-new-player-key\n');
     assert.equal((await (await f.post('/api/settings',f.settings)).json()).ok,true);
-    assert.equal((await f.get('/api/state')).gameplay_version,5);
+    assert.equal((await f.get('/api/state')).gameplay_version,6);
     assert.equal((await readdir(f.dataDir)).includes('network-attempt'),false);
     await f.dispose();
     await f.restart();

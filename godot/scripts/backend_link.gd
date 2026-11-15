@@ -145,7 +145,9 @@ func api_newday() -> void:
 	_settling = true
 	_post_json("/api/newday", {}, func(_code, result, _text):
 		_settling = false
-		command_done.emit(bool(result.get("ok", false)), "每日结算已保存" if result.get("ok", false) else "结算失败，请检查连接"))
+		# ★不再说"每日结算"：旧经营玩法停用后结算面板已删，跨天只剩
+		#   日切与自动存档两件事，报一个不存在的面板就是在骗人。
+		command_done.emit(bool(result.get("ok", false)), "新的一天开始了" if result.get("ok", false) else "换天失败，请检查连接"))
 
 func _post_json(path: String, body: Dictionary, cb: Callable) -> void:
 	var http := HTTPRequest.new()

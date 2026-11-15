@@ -152,16 +152,27 @@ func _waiting_text() -> String:
 	return "还在酝酿怎么开口…"
 
 
-func _draw_settled(r: Rect2, y: float) -> void:
+## 背锅那一行的文案。
+##
+## ★不再承诺「心情 -6」：甩锅现在由真 Bot 任务失败驱动（客户端读真任务状态），
+##   它只改关系值（blame_accused / blame_shift），并不改心情。
+##   报一个玩家看不到、也没发生的数值，就是在骗人。
+func _settled_text() -> Dictionary:
 	var s: Dictionary = mt.get("settled", {}) if mt.get("settled") else {}
 	if s.is_empty():
-		return
+		return {"msg": "", "col": Color("#b5a587")}
 	var culprit := str(s.get("culprit", "") if s.get("culprit") else "")
-	var msg := "没人被点名，这锅没着落"
-	var col := Color("#b5a587")
-	if culprit != "":
-		msg = "%s 被推出来背锅，心情 -6" % NAMES.get(culprit, culprit)
-		col = Color("#ff6b6b")
+	if culprit == "":
+		return {"msg": "没人被点名，这锅没着落", "col": Color("#b5a587")}
+	return {"msg": "%s 被推出来背锅" % NAMES.get(culprit, culprit), "col": Color("#ff6b6b")}
+
+
+func _draw_settled(r: Rect2, y: float) -> void:
+	var line := _settled_text()
+	var msg := String(line.get("msg", ""))
+	if msg.is_empty():
+		return
+	var col: Color = line.get("col", Color("#b5a587"))
 	UITheme.text_in(self, _font, Rect2(r.position.x + 24, y + 8, PANEL.x - 48, 22), msg, 13, col)
 
 

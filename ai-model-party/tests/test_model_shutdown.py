@@ -10,7 +10,6 @@ import providers as P
 import game as G
 import game_app as API
 import save as SAVE
-import conflict as CF
 import banter as BT
 import blame_game as BG
 
@@ -69,8 +68,9 @@ class ShutdownTests(unittest.TestCase):
         self.assertTrue(worker.brain_down)
         self.assertEqual(worker.acting, '脑袋宕机了')
         self.assertFalse(worker.path or worker.order or worker.typing or worker.job)
-        # 命令即工单：无客户可释放，shutdown 也绝不应凭空造出客户
-        self.assertEqual(self.game.clients, [])
+        # 命令即工单：客户系统已下线，shutdown 也绝不应凭空造出客户状态
+        self.assertFalse(hasattr(self.game, 'clients'))
+        self.assertEqual(self.game.snapshot()['clients'], [])
 
     def test_shutdown_worker_rejects_every_normal_action(self):
         worker = self.game.workers['kimi']
@@ -161,25 +161,24 @@ class ShutdownTests(unittest.TestCase):
             self.assertTrue(self.game.workers['kimi'].brain_down)
             self.assertEqual(api.call_count, 1)
 
-    def test_transient_failure_returns_order_without_shutdown(self):
+    def test_transient_failure_does_not_shut_the_worker_down(self):
         w = self.game.workers['kimi']
         error = P.error_event('kimi', 503)
-        with patch.object(self.game, '_await_at', return_value=True), \
-                patch.object(P, 'stream_chat', return_value=iter([error])):
-            # 命令即工单：没有客户，服务线程对找不到的订单必须是安全空操作
-            self.game._serve_client_thread('ghost-order')
+        with patch.object(P, 'stream_chat', return_value=iter([error])):
+            events = list(self.game.model_stream('kimi', 'hi'))
+        # 临时错误（503 之类）只回错误事件，不该把人的脑袋判死
         self.assertFalse(w.brain_down)
-        self.assertEqual(self.game.clients, [])
+        self.assertTrue(any(e['type'] == 'error' for e in events))
+        self.assertFalse(hasattr(self.game, 'clients'))
 
-    def test_delivery_path_handles_quota_without_acceptance_or_fake_text(self):
+    def test_acceptance_is_gracefully_rejected_without_fake_result(self):
+        # 客户系统下线：交付线程整条链路已删除，验收接口对任何订单都体面拒绝，
+        # 更不能凭空造出"完成了一单"的假象。
+        self.assertFalse(hasattr(self.game, '_serve_client_thread'))
         self.game.workers['kimi'].job = 'ghost-order'
-        with patch.object(self.game, '_await_at', return_value=True), \
-                patch.object(P, 'stream_chat', return_value=iter([QUOTA])):
-            self.game._serve_client_thread('ghost-order')
-        # 命令即工单：没有客户，验收接口对不存在的订单必须返回 ok=False
         self.assertFalse(self.game.accept('ghost-order', True)['ok'])
         self.assertFalse(self.game.workers['kimi'].worked_today)
-        self.assertEqual(self.game.clients, [])
+        self.assertFalse(hasattr(self.game, 'clients'))
 
     def test_no_motion_autograb_meeting_or_scheduler_for_down_worker(self):
         self.game.shutdown_model('kimi', QUOTA)
@@ -198,13 +197,14 @@ class ShutdownTests(unittest.TestCase):
         self.assertIsNone(w.order)
         self.assertEqual(w.acting, '脑袋宕机了')
 
-    def test_auto_grab_can_only_choose_surviving_worker(self):
+    def test_client_pipeline_is_gone(self):
+        # 客户系统下线：抢单、抢单冲突、交付线程这条链路整条删除。
+        for name in ('_auto_grab', '_serve_client_thread', 'spawn_client',
+                     'client_slots', '_retire_client', '_conflict_thread'):
+            self.assertFalse(hasattr(self.game, name), name)
         for who in ('m3', 'kimi', 'longcat'):
             self.game.shutdown_model(who, {**QUOTA, 'who': who})
-        c = G.Client('synthetic task', 100, 200, 'document', 'normal')
-        with patch('threading.Thread'), patch.object(CF, 'pick_contenders', return_value=[]):
-            self.game._auto_grab(c)
-        self.assertEqual(c.served_by, 'step5')
+        self.assertFalse(hasattr(self.game, 'clients'))
 
     def test_all_shutdown_has_no_models_or_meetings(self):
         for who in self.game.workers:
@@ -215,20 +215,19 @@ class ShutdownTests(unittest.TestCase):
             self.assertFalse(self.game.start_meeting()['ok'])
         request.assert_not_called()
         threads.assert_not_called()
-        self.assertEqual(self.game.clients, [])
+        self.assertFalse(hasattr(self.game, 'clients'))
 
-    def test_conflict_quota_releases_both_jobs_without_fake_argument(self):
-        self.game.conflicts['ghost'] = {'a': 'kimi', 'b': 'longcat', 'task': 'synthetic task',
-                                        'lines': [], 'client': 'ghost', 'judged': False}
+    def test_shutdown_releases_jobs_without_inventing_client_state(self):
         self.game.workers['kimi'].job = 'ghost'
         self.game.workers['longcat'].job = 'ghost'
-        with patch.object(P, 'stream_chat', return_value=iter([QUOTA])) as stream:
-            self.game._conflict_thread('ghost', 'kimi', 'longcat')
-        self.assertEqual(stream.call_count, 1)
-        self.assertFalse(self.game.conflicts)
-        self.assertIsNone(self.game.workers['longcat'].job)
+        self.game.shutdown_model('kimi', QUOTA)
+        # 抢单冲突随客户系统下线：shutdown 不再有"把活还给队列"这一步，
+        # 但人必须被冻住，状态里也不能凭空冒出客户/冲突。
+        self.assertTrue(self.game.workers['kimi'].brain_down)
+        self.assertIsNone(self.game.workers['kimi'].job)
         self.assertFalse(self.game.workers['longcat'].brain_down)
-        self.assertEqual(self.game.clients, [])
+        self.assertFalse(hasattr(self.game, 'clients'))
+        self.assertFalse(hasattr(self.game, 'conflicts'))
 
     def test_save_restore_and_newday_do_not_reboot_model(self):
         self.game.shutdown_model('kimi', QUOTA)
@@ -290,7 +289,7 @@ class ShutdownTests(unittest.TestCase):
         reply = self.game.command('longcat', 'assign', 'ghost-order')
         self.assertFalse(reply['ok'])
         self.assertIn('接单已停用', reply['msg'])
-        self.assertEqual(self.game.clients, [])
+        self.assertFalse(hasattr(self.game, 'clients'))
 
 
 if __name__ == '__main__':

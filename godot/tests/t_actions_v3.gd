@@ -1,5 +1,5 @@
 extends SceneTree
-## 五人动作、行走优先级和客户离场；不装配后端通信。
+## 五人动作与行走优先级；不装配后端通信。
 var passed := 0
 var failed := 0
 
@@ -48,14 +48,5 @@ func run() -> void:
 		w._process(.9)
 		check(who + " 喝咖啡具有举杯帧", w.pose == "drink_down" and w.body.texture != cup)
 		w.free()
-	var c := ClientNode.new()
-	root.add_child(c)
-	c.setup({"id":"isolated-client","x":8,"y":8,"queue_x":8,"queue_y":8,"persona":"normal"})
-	c.begin_exit()
-	var departure_path := c._path.duplicate()
-	check("客户离场经过真实门口且不穿家具", not departure_path.is_empty() and departure_path[-1] == md.locations.entrance and departure_path.all(func(p):return md.is_passable(p)))
-	c._process(20)
-	await process_frame
-	check("走到门口后移除客户节点", not is_instance_valid(c))
 	print("ACTIONS V3: %d passed, %d failed" % [passed,failed])
 	quit(0 if failed == 0 else 1)

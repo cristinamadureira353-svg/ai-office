@@ -37,33 +37,24 @@ func _init() -> void:
 	for id in ["m3", "flash", "longcat", "kimi", "step5"]:
 		staff.append({"id":id, "acting":"在办公区闲逛", "stamina":100, "mood":70})
 	var employee := WorkerPanel.new()
-	var client := ClientPanel.new()
 	var chat := ChatPanel.new()
 	host.add_child(employee)
-	host.add_child(client)
 	host.add_child(chat)
 	var chats: Array = []
 	var sent: Array = []
-	var feedback: Array = []
-	var commands: Array = []
 	employee.chat_requested.connect(func(who):
 		chats.append(who)
 		chat.open_with(who))
 	chat.send_requested.connect(func(who, text): sent.append([who, text]))
-	client.feedback.connect(func(message): feedback.append(message))
-	client.cmd_requested.connect(func(who, action, arg): commands.append([who, action, arg]))
 	await process_frame
 	employee.update_from({"workers":staff})
-	client.show_client({"id":"input", "status":"服务中", "task":"测试需求", "served_by":"flash"}, staff)
 	for i in 3:
 		await process_frame
 	await click(employee._bars[0].rect.get_center())
-	check("客户详情可见时仍能点击底部员工卡", employee.selected == "m3")
+	check("员工卡可点开详情", employee.selected == "m3")
 	for i in 5:
-		client.show_client({"id":"input", "status":"服务中", "task":"测试需求"}, staff)
-		await process_frame
 		await click(employee._bars[i].rect.position + Vector2(22, 36))
-		check("客户详情打开时选中员工 " + staff[i].id, employee.selected == staff[i].id)
+		check("选中员工 " + staff[i].id, employee.selected == staff[i].id)
 		await click(employee._chat_buttons[i].rect.get_center())
 		check("直接聊天按钮打开正确员工 " + staff[i].id, chat.visible and chat.who == staff[i].id and chats[-1] == staff[i].id)
 		check("打开聊天后可直接输入 " + staff[i].id, chat._entry.has_focus())
@@ -78,19 +69,16 @@ func _init() -> void:
 		chat.end_stream()
 		await click(chat._close_rect.get_center())
 		check("鼠标关闭聊天 " + staff[i].id, not chat.visible)
-	staff[0].brain_down = true
-	staff[1].off_today = true
-	staff[2].job = "another-job"
-	staff[3].stamina = 10
-	staff[4].strike = true
-	client.show_client({"id":"blocked", "status":"等待", "task":"测试需求"}, staff)
-	for i in 3:
-		await process_frame
-	for button in client._disabled_btns:
-		await click(button.rect.get_center())
-	check("五种无法派单的原因均有反馈", feedback.size() == 5 and feedback[0].contains("脑袋宕机") and feedback[1].contains("轮休") and feedback[2].contains("另一单") and feedback[3].contains("体力") and feedback[4].contains("罢工"))
-	check("点击禁用按钮不发送派单请求", commands.is_empty())
-	check("透明区域允许场景拾取", not client._has_point(Vector2(120, 160)) and not employee._has_point(Vector2(120, 160)))
+	# ★旧经营玩法已停用：员工详情里不再有「派单」按钮，也就没有"能不能派单"的门槛。
+	#   现在详情里只有真 Bot 的指令（休息 / 摸鱼 / 开会 / 轮休 / 回工位 / 聊天）。
+	employee.selected = "m3"
+	await process_frame
+	var ids: Array = []
+	for button in employee._btns:
+		ids.append(String(button.id))
+	check("员工详情只剩氛围指令与聊天，没有派单入口",
+			not ids.has("assign") and ids.has("chat") and ids.has("rest"))
+	check("透明区域允许场景拾取", not employee._has_point(Vector2(120, 160)))
 	check("加大字体后长状态可读", UITheme.fit("脑袋宕机了", 130, ThemeDB.fallback_font, UITheme.SMALL) == "脑袋宕机了")
 	var label := Node2D.new()
 	root.add_child(label)

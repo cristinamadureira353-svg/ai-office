@@ -8,8 +8,9 @@ import { fixture } from './fixture.mjs';
 
 test('MiniApp runtime and private Python bridge', async t => {
   const f = await fixture();
+  // ★money 现在是只读墓碑（恒为 0），赋值会 AttributeError：这份继承存档只带 day。
   const source = await promisify(execFile)(process.env.AI_OFFICE_TEST_PYTHON, ['-c',
-    'import sys,json; sys.path.insert(0,sys.argv[1]); import game,save; g=game.Game(); g.day=6; g.money=777; print(json.dumps(save.snapshot(g,"只读继承测试"),ensure_ascii=False))',
+    'import sys,json; sys.path.insert(0,sys.argv[1]); import game,save; g=game.Game(); g.day=6; print(json.dumps(save.snapshot(g,"只读继承测试"),ensure_ascii=False))',
     join(f.pluginRoot, 'miniapp/node/backend/server')], {env:{...process.env, AI_OFFICE_ENV_PATH:f.settings.envFile}});
   f.settings.initialSave = join(f.scratch, 'original.json');
   await writeFile(f.settings.initialSave, source.stdout);
@@ -38,11 +39,13 @@ test('MiniApp runtime and private Python bridge', async t => {
       assert.deepEqual(JSON.parse(await readFile(join(f.dataDir, 'settings.json'), 'utf8')), f.settings);
       assert.equal((await stat(join(f.dataDir, 'settings.json'))).mode & 0o777, 0o600);
     });
-    await t.test('state is V5 and quota failure returns gameplay status through SSE', async () => {
+    await t.test('state is V6 and quota failure returns gameplay status through SSE', async () => {
       const initial = await f.get('/api/state');
-      assert.equal(initial.gameplay_version, 5);
+      assert.equal(initial.gameplay_version, 6);
       assert.equal(initial.day, 6);
-      assert.equal(initial.money, 777);
+      // 旧经济只剩墓碑：继承的存档带不了钱，钱恒为 0、声誉恒为 50。
+      assert.equal(initial.money, 0);
+      assert.equal(initial.rep, 50);
       const response = await f.post('/api/chat', {who:'kimi', text:'测试一下'});
       const text = await response.text();
       assert.equal(response.status, 200);

@@ -5,10 +5,33 @@
 - 移动本身是本地寻路 + 插值，不消耗 API
 - 客户/任务等关键事件才调 LLM（真实交付物）
 - 玩家可随时对任意角色下达指令，指令优先级高于 Jev
-"""
-import os, json, math, random, threading, time, uuid
 
-SPAWN_SEC = float(os.environ.get("GAME_SPAWN_SEC", "25"))
+★ 旧模拟经营玩法已整体下线（命令即工单）
+──────────────────────────────────────────────────────────────
+这套代码原来有两套玩法并存：假客户上门 / 员工抢单 / 资金声誉结算，
+以及真 MiniMax Bot 团队。前者的入口早就焊死了：
+spawn_client() 第一行就 return、assign 指令在服务端被拒，
+于是 self.clients 永远是空的，所有"遍历客户"的分支都是空转死代码。
+这一版把那条链整个删掉：Client 类、spawn_client、_auto_grab、抢单冲突、
+验收/打回/流失、资金与声誉、破产判定，全部不再存在。
+
+★ 为什么没有破产判定了
+──────────────────────────────────────────────────────────────
+原来唯一的失败条件是"资金连续为负 3 天"（ST.game_over），它建立在
+资金/声誉这套假账上。真 Bot 团队没有"钱不够就接不了单"这回事，
+硬造一个新的失败条件只会卡玩家（约束：玩家不该因为钱或声誉输）。
+所以这里**取消破产机制**：game_over_reason 恒为 None，
+/api/state 的 game_over 恒为 null（客户端把 null 当空串处理，不会显示"游戏结束"）。
+money / rep 只剩 HTTP 层的墓碑（只读属性），不参与任何结算。
+
+★ 还留着的氛围玩法
+──────────────────────────────────────────────────────────────
+体力/心情/疲劳照旧生效（驱动走动、闲聊、休息姿势），关系八卦、甩锅、
+闲聊、会议、走位寻路、轮休 off/back、团建（只回心情不扣钱）、
+跨天结算（/api/newday）全部保留。
+"""
+import os, json, math, random, threading, time
+
 # 复盘会结算后留给客户端展示结果的秒数，超时就自动散会把人放回工位
 BLAME_HOLD = float(os.environ.get("GAME_BLAME_HOLD", "15"))
 # 复盘会为了不打断在跑的活，最多先等这么久（等不到就插进去）
@@ -59,7 +82,6 @@ load_dotenv(os.environ.get("AI_OFFICE_ENV_PATH") or os.path.join(HERE, "..", ".e
 import providers as P
 import scheduler as S
 import relations as REL
-import conflict as CF
 import banter as BT
 import blame_game as BG
 import stats as ST
@@ -163,20 +185,6 @@ ATTR = {
     "kimi":    {"speed": 1.4, "stamina_max": 100, "work_rate": 0.9, "quality": 0.95},
     "step5":   {"speed": 2.4, "stamina_max": 110, "work_rate": 1.35, "quality": 0.80},
 }
-
-CLIENT_TASKS = [
-    ("帮我写一份产品需求文档", "document"),
-    ("把这个功能的需求讲清楚", "document"),
-    ("审一下这个方案有哪些坑", "review"),
-    ("整理这堆资料出个总结", "summarize"),
-    ("给这个需求估个工期", "estimate"),
-    ("想三个可落地的功能方向", "ideate"),
-    # ★DESIGN 5.1 有 7 类需求，原来只实现了 5 类，缺「执行」。
-    #   执行是 ★★★ 中高档（120-180），是"派 Step5/LongCat"这条路由的主要载体；
-    #   少了它，模拟器 SKILL 表里的 execute 分支从来没被跑到过。
-    ("帮我把这套流程跑通", "execute"),
-]
-
 
 def passable(p):
     return p in FLOOR and p not in WALLS
@@ -331,54 +339,17 @@ class Worker:
         self.log = self.log[-6:]
 
 
-class Client:
-    # ★M3-7：人形。DESIGN 5.1 的"基础人形 5 种"之前只有设定、没有实现，
-    #   kind 存的是需求类型，和人形是两回事，别混。
-    PERSONAS = {
-        "normal":     "普通上班族",
-        "boss":       "创业公司老板",
-        "client_hard": "甲方大人",
-        "geek":       "极客程序员",
-        "young":      "年轻客户",
-    }
-
-    def __init__(self, task, reward, patience, need, persona=None):
-        self.id = uuid.uuid4().hex[:6]
-        self.task = task
-        self.kind = need                        # 需求类型 document/analysis/…
-        self.persona = persona or random.choice(list(self.PERSONAS))
-        self.reward = reward
-        self.patience_max = patience
-        self.patience = patience
-        self.slot = None
-        self.served_by = None
-        self.status = "等待"      # 等待 / 抢单中 / 服务中 / 待验收 / 已完成 / 已流失
-        self.result = None
-        self.grab_tick = 10**9
-        self.pos = tuple(LOCATIONS["entrance"])
-
-    @property
-    def persona_name(self):
-        return self.PERSONAS.get(self.persona, "普通上班族")
-
-
 class Game:
     def __init__(self):
         self.reset()
 
     def reset(self):
         self.day = 1
-        # ★M4-4：原来这里写死 300，而 stats.INIT_MONEY 是 500（DESIGN 7.1）。
-        #   两处不一致的直接后果：平衡模拟器按 500 起跑，真实游戏按 300 起跑，
-        #   模拟结论和实玩对不上，差 200 块。唯一正确的做法是这里读常量。
-        self.money = ST.INIT_MONEY
-        self.rep = ST.INIT_REP
         self._day_start = 0        # 本天第几个 tick（M4-4 自动跨天的分母）
         # ★M4-3 世代号：reset() / 读档都会 +1。
         #   起因是「读档不撤销在跑的 LLM 线程」——一次交付要 45~75 秒，
-        #   期间玩家按了读档，还原出一个**全新的 clients 列表和 Worker 对象**，
-        #   那个线程醒来后照样会执行 c.result=... / worker.worked_today=True，
-        #   甚至可能往 self.clients / self.slots 上插东西。
+        #   期间玩家按了读档，还原出了一个全新的 Worker 对象集合，
+        #   那个线程醒来后照样会往还原出来的状态上写东西。
         #   办法：线程每步拿自己的起点世代号比一下，对不上就地收工。
         self.gen = 0
         self.workers = {
@@ -388,27 +359,41 @@ class Game:
             "kimi":    Worker("kimi", (16, 14)),
             "step5":   Worker("step5", (20, 14)),
         }
-        self.clients = []
-        self.slots = {}            # 接待位 -> client
         self.events = []           # 全局事件流
         self.log = []
         self.running = False
         self.tick = 0
         self.meeting = None          # {"topic","seated","phase","started"}
-        self.conflicts = {}          # client_id -> {"a","b","lines","task"}
-        self._cf_store = {}          # 冲突冷却
         self._bt_store = {}          # 吐槽冷却
         self.banters = []            # 最近的吐槽对话（给客户端气泡）
-        self.failures = []           # M2-6：今天干砸的单（发生时就记，不事后反推）
-        self.finished = []           # M3-9：已完结客户的滚动存档（上限 4）
         self._blame_store = {}       # 复盘会冷却（记 last_blame_day）
-        self.neg_days = 0            # M2-8：资金为负已持续几天（满 3 天破产）
         self._blame_want_at = 0.0    # 复盘会想开但还在等活干完的时刻
-        self.game_over_reason = None  # M2-8：失败原因，非 None 即游戏结束
+        # 破产机制已下线（见文件头说明）：恒为 None，/api/state 的 game_over 恒为 null。
+        self.game_over_reason = None
         self.last_settle = None      # 最近一次每日结算明细
         self._jev_at = 0
-        self._spawn_at = 0
         self._lock = threading.RLock()
+
+    # ── 旧经济系统的墓碑 ──────────────────────────────────────────────────
+    # 客户/接单停用后，事务所不再有"资金"和"声誉"这两笔账：它们从来只是
+    # 假客户的进出场结算物，现在没有任何代码会改动它们。
+    # 之所以还留着这两个**只读**属性：HTTP 层（game_app.py 的 /api/load、
+    # /api/newday）和前端（godot/scripts/daily_report.gd 的每日结算面板）
+    # 仍在读这两个 key，直接删掉会让接口 500、界面读不到值。
+    # 它们不参与任何结算，也不参与任何失败判定。
+    @property
+    def money(self):
+        """旧经济系统的占位值：没有资金概念了。"""
+        return 0
+
+    @property
+    def rep(self):
+        """旧经济系统的占位值：声誉停在初始值 50。
+
+        50 与前端 save_ui.gd 的 INIT_REP、以及 stats.INIT_REP 一致，
+        旧存档识别（"声誉还是 50 就是新档"）依赖这个约定。
+        """
+        return 50
 
     # ── 事件 ──
     def event(self, kind, text, who=None, extra=None):
@@ -435,7 +420,7 @@ class Game:
         w.end_typing()
 
     def shutdown_model(self, who, error, gen=None):
-        """停掉耗尽额度的模型，并把尚未交付的客户交还给其他人。"""
+        """停掉耗尽额度的模型（额度烧光的人不再接单、不再行动）。"""
         with self._lock:
             if gen is not None and not self.gen_alive(gen):
                 return
@@ -443,20 +428,6 @@ class Game:
             if error.get("scope") == "credential":
                 key = P.PROVIDERS[who]["key_env"]
                 affected = [k for k in self.workers if P.PROVIDERS[k]["key_env"] == key]
-            for cid, cf in list(self.conflicts.items()):
-                if not set((cf["a"], cf["b"])).intersection(affected):
-                    continue
-                self.conflicts.pop(cid, None)
-                for peer in (cf["a"], cf["b"]):
-                    w = self.workers[peer]
-                    w.job, w.order, w.path = None, None, []
-                    w.brain_epoch += 1
-                    if not w.brain_down:
-                        w.acting = "在工位待命"
-                c = next((c for c in self.clients if c.id == cid), None)
-                if c:
-                    c.status, c.served_by, c.result = "等待", None, ""
-                    c.grab_tick = self.tick + 90
             for w in self.workers.values():
                 if w.who not in affected or w.brain_down:
                     continue
@@ -468,11 +439,6 @@ class Game:
                 self._freeze_brain(w)
                 if self.meeting:
                     self.meeting["seated"] = [p for p in self.meeting.get("seated", []) if p != w.who]
-                for c in self.clients:
-                    if c.served_by == w.who and c.status in ("等待", "服务中", "抢单中"):
-                        c.status, c.served_by, c.result = "等待", None, ""
-                        c.grab_tick = self.tick + 90
-                        c.patience = max(c.patience, c.patience_max)
                 self.event("brain_down", "%s：%s，暂停接单和行动" %
                            (w.meta["name"], error["message"]), who=w.who)
 
@@ -528,305 +494,15 @@ class Game:
             if self.gen_alive(gen) and self.workers.get(who) is w and w.brain_epoch == epoch:
                 w.brain_checking = False
 
-    # ── 客户 ──
-    # ★DESIGN 3.2：「客户到达节奏：第 1 天 3 个，每过一天 +1，上限 5 个同时在等」
-    #   原来这里是硬编码的 3 —— 客流从第 1 天到第 30 天**完全不变**，
-    #   于是"越玩越忙"的成长感不存在，后期压力也上不来。
-    # ★DESIGN 7.1：「声誉 0-100，影响客户数量**和**报酬」——
-    #   声誉对报酬那半早就实现了（stats.reward_scale），数量这半一直缺。
-    #   现在：基础槽位随天数 3→5，声望 ≥80 提前一天多一席。
-    @staticmethod
-    def client_slots(day, rep):
-        base = 3 + (max(1, day) - 1) // 2      # 1~2天:3  3~4天:4  5天起:5
-        bonus = 1 if rep >= 80 else 0          # 口碑好，客人来得更早
-        return max(3, min(5, base + bonus))
-
-    def spawn_client(self):
-        # 客户系统已停用：命令即工单 —— 不再有客户上门，任何调用进来都直接返回
-        return
-        cap = self.client_slots(self.day, self.rep)
-        if len(self.slots) >= cap:
-            return
-        free = [i for i in range(cap) if i not in self.slots]
-        if not free:
-            return
-        # 需求去重：最近 8 个任务不重复，避免同一批客户全是同一个需求
-        recent = [getattr(c, "task", None) for c in self.clients][-8:]
-        pool = [t for t in CLIENT_TASKS if t[0] not in recent] or CLIENT_TASKS
-        task, kind = random.choice(pool)
-        # ★M4-4：难度/报酬挂**声誉**，不是挂天数。
-        #   原来 `diff = 1 + (self.day - 1) * 0.12` 是按天复利 12%，
-        #   30 天后单子值 4.5 倍，钱从 500 涨到 21921（44 倍）、声誉第 7 天顶到 100，
-        #   破产这个失败条件在设计上根本不可能触发——调参前先确认这一条。
-        #   DESIGN 7.1 原话是「声誉 0-100，影响客户数量和报酬」，
-        #   声誉有上限（100），报酬就不会无限膨胀，而且膨胀得靠玩家挣。
-        diff = ST.reward_scale(self.rep)
-        # 耐心按 tick 计。1 tick = 2 游戏分钟，1 天 = 720 tick（DAY_TICKS）。
-        # ★M3-9 实测修正：耐心原来 170~280 tick，接单后 ×2.2 也只有 53~88 tick，
-        #   而一次真实交付要 375~625 tick——**耐心比交付还短**，
-        #   客户系统性地在活干完之前就走了，游戏先天不可赢。
-        #   提到 400~700（接单后 880~1540 tick = 176~308 游戏秒），
-        #   给慢模型（M3 思考占输出 98%）留够余量。
-        # ★M4-4 重做：DESIGN 5.1 给了**分类型**报酬表（跑腿 40-60 / 长文 160-240 /
-        #   急单 200-300），那个跨度不是装饰——它是"派谁干"的路由驱动力。
-        #   M4-4 第一版把它压平成 randint(35, 90)：均值只有设计稿的 45%，
-        #   跨度从 7.5 倍缩到 2.6 倍，设计意图被平掉了。
-        #   现在按类型取区间；REWARD_BY_KIND 没设时才退回扁平的 REWARD_RANGE
-        #   （模拟器的对照实验用这个开关，生产路径默认走类型表）。
-        # ★DESIGN 5.1 给了分类型报酬表，这是设计稿的数字，不是调出来的。
-        #   M4-4 第一版把它压平成 randint(35, 90)（均值只有设计的 45%、
-        #   跨度从 7.5 倍缩到 2.6 倍），是"双向钢人"里反方赢了这一条。
-        by_kind = getattr(ST, "REWARD_BY_KIND", None) or ST.DESIGN_REWARD
-        if by_kind:
-            lo, hi = by_kind.get(kind, by_kind.get("_default", ST.REWARD_RANGE))
-            reward = random.randint(lo, hi)
-        else:
-            reward = random.randint(*ST.REWARD_RANGE)
-        c = Client(task, int(reward * diff), int(random.randint(400, 700)), kind)
-        c.slot = free[0]
-        c.pos = tuple(LOCATIONS["entrance"])
-        self.slots[free[0]] = c
-        self.clients.append(c)
-        c.grab_tick = self.tick + 70        # 玩家 70 tick(~8s) 不派单，AI 就自己抢
-        self.event("client_arrive", f"新客户来了：{c.task}", extra={"client": c.id})
-
-    def _auto_grab(self, c):
-        """玩家没派人，AI 自己抢。可能是单抢，也可能撞车（M2-4）。"""
-        # M2-8：离职 / 罢工 / 体力见底的人不参与抢单。
-        # 心情低的只挑简单单（client 有 difficulty 的话）也在这里挡。
-        idle = [w for w in self.workers.values()
-                if not w.job and w.stamina > 20 and w.available
-                and not w.strike and not w.off_today
-                and ST.can_accept(w.stamina)]
-        if not idle:
-            return
-        # 心情 < 40 的不接复杂单
-        if getattr(c, "difficulty", 1) >= 2:
-            calm = [w for w in idle if ST.accepts_complex(w.mood)]
-            if calm:
-                idle = calm
-        contenders = CF.pick_contenders([w.who for w in idle], self._cf_store, c.id, c.reward)
-        if not contenders:
-            contenders = [random.choice(idle).who]
-        if len(contenders) >= 2:
-            self._start_conflict(c, contenders[0], contenders[1])
-            return
-        who = contenders[0]
-        c.served_by = who
-        c.status = "抢单中"
-        w = self.workers[who]
-        w.job = c.id
-        w.acting = "去抢单"
-        w.order = ("goto", ("reception", c.slot))
-        self.event("grab", f"{w.meta['name']} 自己把「{c.task}」抢走了", who=who)
-        threading.Thread(target=self._serve_client_thread,
-                             args=(c.id, self.gen), daemon=True).start()
-
-    # ── 抢单冲突（M2-4）──
-    def _start_conflict(self, c, a, b):
-        if c.id in self.conflicts:
-            return                      # 已有冲突，不重复起线程
-        c.status = "冲突中"
-        self.conflicts[c.id] = {"a": a, "b": b, "task": c.task, "lines": [],
-                                "client": c.id, "judged": False}
-        for who in (a, b):
-            w = self.workers[who]
-            w.job = c.id                 # 锁定：冲突期间不能被别人接走
-            w.order = ("goto", ("reception", c.slot))
-            w.acting = "去理论"
-        self.event("conflict_start",
-                   f"{self.workers[a].meta['name']} 和 {self.workers[b].meta['name']} 为「{c.task}」吵起来了")
-        threading.Thread(target=self._conflict_thread, args=(c.id, a, b), daemon=True).start()
-
-    def _conflict_thread(self, cid, a, b):
-        cf = self.conflicts.get(cid)
-        if not cf:
-            return
-        original, gen = cf, self.gen
-        lines = CF.build_argument(cid, cf["task"], a, b, self._cf_store, self.tick,
-                                  stream=self.model_stream)
-        with self._lock:
-            cf = self.conflicts.get(cid)
-            if cf is not original or not self.gen_alive(gen):
-                return
-            cf["lines"] = lines
-        for ln in lines:
-            self.event("argue", f"{P.PROVIDERS[ln['who']]['name']}：{ln['text'][:40]}",
-                       who=ln["who"])
-
     def judge(self, cid, kind, tick=0):
-        """玩家裁决。kind ∈ a/b/reject/scold"""
-        if kind not in CF.JUDGE_CHOICES:
-            return {"ok": False, "msg": "未知裁决"}
-        with self._lock:
-            cf = self.conflicts.get(cid)
-            if not cf or cf.get("judged"):
-                return {"ok": False, "msg": "这场冲突已经判过了"}
-            c = next((x for x in self.clients if x.id == cid), None)
-            a, b = cf["a"], cf["b"]
-            res = CF.apply_judgement(kind, a, b, tick)
-            for who, dm in res["mood"].items():
-                w = self.workers[who]
-                w.mood = max(0, min(100, w.mood + dm))
-            cf["judged"] = True
-            winner = {"a": a, "b": b}.get(kind)
-            if winner:
-                c.served_by = winner
-                c.status = "抢单中"
-                w = self.workers[winner]
-                w.order = ("goto", ("reception", c.slot))
-                w.acting = "去接单"
-                self.workers[a if winner == b else b].job = None
-                self.event("judge", f"你把活判给 {w.meta['name']}")
-                threading.Thread(target=self._serve_client_thread,
-                                     args=(cid, self.gen),
-                                     daemon=True).start()
-            else:
-                c.served_by = None
-                c.status = "等待"
-                c.patience = max(0, c.patience - 50)
-                # 玩家刚裁决"都不接"，要给他喘息时间重新决定派谁。
-                # 不然下一个 tick _auto_grab 立刻又把单抢走，玩家裁决形同虚设。
-                c.grab_tick = self.tick + 90
-                for who in (a, b):
-                    self.workers[who].job = None
-                    self.workers[who].order = None
-                    self.workers[who].acting = "理论输了"
-                self.event("judge", "你谁也没让，客户还在等（稍后可能又被抢）")
-            self.conflicts.pop(cid, None)
-        return {"ok": True, "kind": kind, "winner": winner}
+        """抢单冲突的裁决入口——随客户系统一起下线了。
 
-    def conflicts_view(self):
-        return [{"client": k, "a": v["a"], "b": v["b"], "task": v["task"],
-                 "lines": v["lines"], "judged": v.get("judged", False)}
-                for k, v in self.conflicts.items() if not v.get("judged")]
-
-    def _serve_client_thread(self, cid, gen=None):
-        """AI 走到客户那里接单，然后走到工位干活，最后交付。
-
-        gen 是**本线程启动时**的世代号。每跨一次长等待、每次要写回状态之前都验一次
-        ——中间可能已经读档了，那时候继续写就是往已还原的状态上糊东西。
+        抢单冲突只可能发生在两个 AI 争同一个**假客户**的时候，
+        客户系统停用后这个场景永远不存在，冲突数据也不再有任何来源。
+        保留这个方法只因为 HTTP 层（/api/command 的 judge 动作）还会调它：
+        给一个体面的失败，而不是 500。
         """
-        if gen is None:
-            gen = self.gen
-        c = next((x for x in self.clients if x.id == cid), None)
-        if not c:
-            return
-        try:
-            w = c.served_by
-            worker = self.workers.get(w)
-            if not worker or not worker.available:
-                return
-            c.status = "服务中"
-            # 既然有人接了，客户愿意等——把耐心重置并放大，别让 AI 干到一半客户跑了
-            c.patience = int(c.patience_max * 2.2)
-            # 1) 走去接待（会议优先：正在开会就先去开会，客户等得起）
-            if not self._seat_ready(worker, 90):
-                if not worker.available:
-                    return
-                c.status = "已流失"
-                self.slots.pop(c.slot, None)
-                return
-            # ★_seat_ready 返回"已就座"意味着会议还在开。这会儿直接派他去接待处是走不到的
-            #   （seat_cmd 压过 goto），只能白等 _await_at 超时、客户耐心耗尽而流失。
-            #   所以这里等会议真的散了再继续干活。
-            self._await_meeting_end(worker, c, 120)
-            if not self.gen_alive(gen) or c.status == "已流失" or not worker.available or c.served_by != w:
-                return
-            worker.order = ("goto", ("reception", c.slot))
-            worker.acting = "去接客户"
-            self._await_at(worker, "reception", c.slot, 90)
-            # ★每次长等待之后都验世代
-            if not self.gen_alive(gen) or c.status == "已流失" or not worker.available or c.served_by != w:
-                return
-            worker.say(f"接下了：{c.task}")
-            self.event("accept", f"{worker.meta['name']} 接下了「{c.task}」", who=w)
-            # 2) 去工位干活（真实调用）
-            worker.order = ("goto", ("desk", worker.who))
-            worker.acting = "去工位"
-            self._await_at(worker, "desk", worker.who, 120)
-            if not self.gen_alive(gen) or c.status == "已流失" or not worker.available or c.served_by != w:
-                return
-            worker.acting = "干活中"
-            # 3) 干活：真实 LLM 调用产出交付物
-            #    ★ 三道防线见 providers.py：deliver_system 硬约束 + 按模型分配
-            #      max_completion_tokens + truncate 兜底。空结果自动重试一次。
-            worker.working = 0
-            # M2-8：体力低 → 效率打折。真正落地在收入上（accept 里按 eff 折质量），
-            # 不然"效率 -30%"只是个没人看得见的数字。
-            worker.eff = ST.efficiency(worker.stamina)
-            worker.need = ST.work_need(ATTR[worker.who]["work_rate"] * 10,
-                                       worker.stamina)
-            deliver = ""
-            # ★M4-2：干活期间开打字活动，逐个 delta 喂字符数进去。
-            #   异常路径也一定要 end_typing()，否则这个人会一直"打着字"，
-            #   而且 finally 里再调一次是幂等的（end_typing 只是置位）。
-            worker.begin_typing()
-            try:
-                for ev in P.deliver_stream(w, c.task, stream=self.model_stream):
-                    if ev.get("type") == "delta":
-                        worker.feed_typing(len(ev.get("text", "")))
-                    elif ev.get("type") == "deliver":
-                        deliver = ev.get("text", "")
-                    elif ev.get("type") == "error":
-                        if worker.available and c.served_by == w:
-                            c.status, c.served_by = "等待", None
-                            c.grab_tick = self.tick + 90
-                            worker.job, worker.order = None, None
-                            worker.acting = "在工位待命"
-                        return
-            finally:
-                worker.end_typing()
-            # ★最关键的一处：LLM 回来了，确认还是同一代才允许写回交付物。
-            #   不确认的话这行会把结果写进读档后那个全新的状态里，
-            #   而那个 Client 对象根本不在 clients 列表里了。
-            if not self.gen_alive(gen) or not worker.available or c.served_by != w:
-                return
-            c.result = deliver or "（这次没交出东西）"
-            if deliver:
-                worker.worked_today = True
-            # 4) 回接待处交付
-            worker.order = ("goto", ("reception", c.slot))
-            worker.acting = "回去交付"
-            self._await_at(worker, "reception", c.slot, 90)
-            if not self.gen_alive(gen) or c.status == "已流失" or not worker.available or c.served_by != w:
-                return
-            c.status = "待验收"
-            worker.order = None
-            worker.acting = "在工位待命"
-            self.event("deliver", f"{worker.meta['name']} 交付了「{c.task}」，等你验收", who=w,
-                       extra={"client": cid})
-        except Exception as e:
-            self.event("error", f"服务出错：{e}")
-
-    def _seat_ready(self, worker, timeout=90):
-        """等这个角色在会议中就座。会议优先于接单。"""
-        t0 = time.time()
-        while time.time() - t0 < timeout:
-            if not worker.available:
-                return False
-            if worker.seated:
-                return True
-            if not self.meeting:
-                return True          # 会议已散，直接去干活
-            time.sleep(0.3)
-        return False
-
-    def _await_meeting_end(self, worker, client=None, timeout=120):
-        """等这个角色从会议里出来。已经在外面就立刻返回。
-
-        会议散了 / 客户跑了，任一条件满足就停，别白等。
-        """
-        t0 = time.time()
-        while time.time() - t0 < timeout:
-            if not worker.available:
-                return False
-            if not worker.seated and not worker.seat_cmd:
-                return True
-            if client is not None and client.status == "已流失":
-                return False
-            time.sleep(0.3)
-        return False
+        return {"ok": False, "msg": "接单已停用：抢单冲突随客户系统一起下线了"}
 
     def _await_at(self, worker, loc, idx, timeout=90):
         """等到角色走到目标位置附近（或超时）。"""
@@ -950,52 +626,13 @@ class Game:
                 "msg": "%s 对 %s 的好感 %+g（现在是 %g）" % (name_a, name_b, delta, value)}
 
     def accept(self, cid, approved):
-        c = next((x for x in self.clients if x.id == cid), None)
-        if not c or c.status != "待验收":
-            return {"ok": False}
-        w = self.workers.get(c.served_by)
-        # M2-8：疲劳/累的时候干活，质量打折，收入自然也打折
-        q = ATTR[c.served_by]["quality"] * (getattr(w, "eff", 1.0) if w else 1.0)
-        if approved:
-            gain = int(c.reward * (0.6 + q * 0.6))
-            # 经营玩法停用：接单收入不再入账（money 字段保留，save.py 仍读它）
-            # ★M4-4：声誉涨幅走饱和曲线（stats.rep_gain），不是固定 +3
-            rg = ST.rep_gain(self.rep)
-            self.rep = min(100, self.rep + rg)
-            c.status = "已完成"
-            # ★经营玩法停用：接单收入不再入账（上面那行 gain 仍然照算，
-            #   但它既不进账、界面上也没有对应显示，报给玩家就是假消息）。
-            #   这条分支只报声誉 —— 那是这一单真正会改的数。
-            self.event("accept", f"验收通过，声誉 +{rg}", who=c.served_by)
-            txt = f"通过！声誉 +{rg}"
-        else:
-            self.rep = max(0, self.rep - 5)
-            # 经营玩法停用：打回不再扣钱（money 字段保留，save.py 仍读它）
-            c.status = "已完成"
-            self.failures.append({"task": c.task, "why": "老板打回了",
-                                  "who": c.served_by})
-            self.event("reject", "你打回了这单，声誉 -5", who=c.served_by)
-            txt = "已打回该单，声誉 -5"
-        if w:
-            w.job = None
-            w.stamina = max(0, w.stamina - 22)
-            w.mood = max(0, w.mood - 8)
-        self.slots.pop(c.slot, None)
-        self._retire_client(c)
-        self.note(txt)
-        return {"ok": True, "msg": txt}
+        """验收/打回订单——随客户系统一起下线了。
 
-    def _retire_client(self, c):
-        """把走完流程的客户挪出活跃列表，只留最近 4 单做记录。
-
-        ★M3-9 抓到：完成/流失的客户原来只 pop 了 slot，人还留在 self.clients 里。
-          实测第 6 天就积到 24 条（20 条已是终态），而 snapshot() 每 0.4 秒
-          把整个列表序列化一次 —— 30 天会涨到上百条，既拖慢又占内存。
+        验收的对象是**假客户**的交付物，客户系统停用后既没有订单也没有交付物，
+        这个入口永远不可能成功。保留它只因为 HTTP 层（/api/command 与
+        /api/accept 的 accept 动作）还会调它：给一个体面的失败，而不是 500。
         """
-        self.finished.append(c)
-        if len(self.finished) > 4:
-            self.finished = self.finished[-4:]
-        self.clients = [x for x in self.clients if x is not c]
+        return {"ok": False, "msg": "接单已停用：验收流程随客户系统一起下线了"}
 
     # ── 地图移动 ──
     def move(self):
@@ -1037,10 +674,6 @@ class Game:
                 goal = self._seat_of(w.who)
             elif w.order and w.order[0] == "goto":
                 goal = self._loc_of(w.order[1][0], w.order[1][1])
-            if goal is None and w.job:
-                c = next((x for x in self.clients if x.id == w.job), None)
-                if c:
-                    goal = self._loc_of("reception", c.slot)
             # ★ 目标变了就必须重算。原写法 `if goal and w.path: continue`
             #   只看"有没有路"，不看"这条路通不通往新目标"：
             #   工人正溜达去茶水间时被派单，order 改成去接待处，旧 path 却被一直复用，
@@ -1059,7 +692,7 @@ class Game:
     def jev_decide(self):
         if not os.environ.get("OPENROUTER_API_KEY", "").strip():
             return
-        # ★M4-4：轮休的人不进调度池。`off_today` 已经挡住了 assign 和 _auto_grab，
+        # ★M4-4：轮休的人不进调度池。`off_today` 已经挡住了 assign，
         #   但 Jev 每 3 秒仍会把他从茶水间支去工位——玩家明明说了"今天轮休"，
         #   看着像指令失效。挡在**进池前**而不是事后忽略，还省一次 API 调用。
         pool = [w.who for w in self.workers.values()
@@ -1071,8 +704,6 @@ class Game:
         _t = max(0, self.tick - self._day_start) * TICK_GAME_MIN
         lines = ["你是一个像素办公室里五个人格的调度器。现在时间 %02d:%02d，他们各自该去哪儿。" %
                  ((_t // 60) % 24, _t % 60)]
-        waiting = len([c for c in self.clients if c.status == "等待"])
-        lines.append(f"当前有 {waiting} 个客户在等。")
         for w in self.workers.values():
             allies = REL.allies_of(w.who)
             foes = REL.enemies_of(w.who)
@@ -1082,7 +713,7 @@ class Game:
             if foes:
                 rel_txt += "，和 " + "、".join(w2 for w2 in foes) + " 合不来"
             lines.append(f"- {w.meta['name']}：体力 {int(w.stamina)}/{ATTR[w.who]['stamina_max']}，心情 {int(w.mood)}，"
-                         f"手上{'有活' if w.job else '没事干'}，当前状态：{w.acting}{rel_txt}")
+                         f"当前状态：{w.acting}{rel_txt}")
         for name, d in LOC_LABEL.items():
             lines.append(f"{name} = {d}")
         state = "\n".join(lines)
@@ -1099,8 +730,6 @@ class Game:
                     tip = "适合" + ("和盟友一起歇着" if allies else "躲清静")
                 if loc == "slack" and foes:
                     tip = "自己摸鱼，谁也别理"
-                if loc == "meeting" and waiting:
-                    tip = "这里正有客户等着"
                 if loc == "desk" and foes:
                     tip = "埋头干活，少看人脸色"
                 opts[loc] = f"去{LOC_LABEL[loc]}（{tip}）"
@@ -1170,18 +799,8 @@ class Game:
             return False            # 已经在去休息的路上了
         w.order = ("goto", ("lounge", w.who))
         w.acting = "累趴了，去休息"
-        if w.job:
-            # 把单子放回队列：累趴一个人不该把客户也拖死，
-            # 别人体力还够就能接。（不还回去的话这单会一直挂在"服务中"直到流失）
-            cid = w.job
-            c = next((x for x in self.clients if x.id == cid), None)
-            if c is not None and c.status in ("服务中", "抢单中"):
-                c.served_by = None
-                c.status = "等待"
-                c.grab_tick = self.tick + 30
-            self.event("exhausted",
-                       f"{w.meta['name']} 体力见底，扔下手上的活去休息", who=w.who)
-            w.job = None
+        # 原来这里还有"把手上的活放回队列"（连同"扔下手上的活去休息"事件）：
+        # 那要先把单子还给客户队列，客户系统下线后没有队列可还，整段一起退场。
         return True
 
     def _maybe_banter(self):
@@ -1191,14 +810,16 @@ class Game:
         pos_fn = lambda w: (w.pos[0], w.pos[1])
         workers = list(self.workers.values())
         for w in workers:
-            # ★ 闸门只用 w.job（手上有活 = 正在干活，走去工位途中也算）。
-            #   原来还要求 acting == "干活中"，但那是**显示用的标签**，
-            #   会被抢单冲突覆盖成"去理论"（实测 295 个工人帧里只有 11 帧是干活中），
-            #   等于把玩法闸门建在一个会被别人踩掉的字符串上。
-            if not w.job or w.seated or not w.available or w.strike:
+            # 闸门：人在工位上才可能搭话。
+            # 客户系统下线后没有"手上的活"了，原来的 w.job 恒为空，闲聊整条
+            # 链路哑掉了（实测 70s 自然触发 0 次）。改用 acting 判断在不在
+            # 办公室：去茶水间、去摸鱼、开会、宕机的都不参与。
+            if w.seated or not w.available or w.strike or w.brain_down:
                 continue
-            c = next((x for x in self.clients if x.id == w.job), None)
-            task = c.task if c else ""
+            if w.acting not in ("在工位待命", "闲逛"):
+                continue
+            # 没有客户就没有具体话题可聊，话题留空。
+            task = ""
             for o, dist in BT.nearby_idle(w, workers, pos_fn):
                 rel = REL.get(o.who, w.who)
                 if not BT.should_speak(w.who, o.who, w.mood, o.mood, rel, self._bt_store):
@@ -1207,7 +828,7 @@ class Game:
                 #   原来在主循环里同步调，网络请求把整个 tick 堵住：
                 #   实测主循环被拖到 3.40 tick/s，只有 sleep(0.12) 理论值的 41%，
                 #   全场移动跟着慢 2.4 倍，于是没人走得到工位、干活中 0 帧。
-                #   这一处是全场唯一没开线程的网络调用（serve/conflict/jev 都开了）。
+                #   这一处是全场唯一没开线程的网络调用（会议/复盘/jev 都开了）。
                 BT.mark(self._bt_store, w.who, o.who, w.who)   # 先占冷却，避免同 tick 重复排队
                 threading.Thread(target=self._banter_thread,
                                  args=(w.who, o.who, task), daemon=True).start()
@@ -1266,7 +887,6 @@ class Game:
     def loop(self):
         self.running = True
         last_jev = 0
-        last_spawn = 0
         # ★M4-4：固定步长用"累计截止时间"而不是"每次 sleep 一个定值"。
         #   实测 `time.sleep(0.006)` 在 macOS 上实际睡 ~19ms，空转 tick 只有
         #   理论 166/s 的 31%——**睡得越久偏得越多**，而且倍速越高偏得越狠。
@@ -1331,28 +951,6 @@ class Game:
                         w.stamina = max(0, w.stamina - 0.03 * K)
                     # M2-8：体力见底 → 强制去休息，压过一切指令
                     self._check_exhausted(w)
-                    # 客户耐心 + AI 自主抢单
-                for c in self.clients:
-                    if c.status == "等待":
-                        if self.tick >= getattr(c, "grab_tick", 10**9):
-                            self._auto_grab(c)
-                    if c.status in ("等待", "服务中", "抢单中"):
-                        c.patience -= K
-                        if c.patience <= 0:
-                            c.status = "已流失"
-                            self.slots.pop(c.slot, None)
-                            self.rep = max(0, self.rep - 3)
-                            self.money = max(0, self.money - 15)
-                            self.event("lost", f"客户等太久走了：{c.task}", extra={"client": c.id})
-                            # M2-6：失败在发生的这一刻记下来。打回的那单在 clients 里
-                            # status 是"已完成"，事后反推查不出来。
-                            self.failures.append({"task": c.task,
-                                                  "why": "客户等太久走了",
-                                                  "who": c.served_by})
-                            if c.served_by and self.workers.get(c.served_by):
-                                self.workers[c.served_by].job = None
-                            self._retire_client(c)     # M3-9：不 retire 的话会一直堆积
-                            self.note("跑了一个客户，声誉-3")
                 for w in self.workers.values():
                     w.tick_typing()      # M4-2：太久没吐字就当停了
                 self._wander_idle()
@@ -1381,10 +979,6 @@ class Game:
             if time.time() - last_jev > 3.0 / TIME_SCALE:
                 last_jev = time.time()
                 threading.Thread(target=self.jev_decide, daemon=True).start()
-            # 客户刷新：每 SPAWN_SEC 秒来一个（测试可调快）
-            # 客户系统已停用：命令即工单 —— 不再来客户，tick 不再调用 spawn_client
-            if time.time() - last_spawn > SPAWN_SEC / TIME_SCALE:
-                last_spawn = time.time()
             # ★M4-4 自动跨天：DAY_TICKS 到了就结算。
             #   以前跨天只能靠外部打 /api/newday，而"30 天长局"那边一天只给
             #   1.2 秒，于是体力/工资这些**按天计**的量根本没有任何一天的分母。
@@ -1424,7 +1018,7 @@ class Game:
         return self.daily_settle()
 
     def daily_settle(self):
-        """跨天时跑一次：出勤 → 疲劳回落 → 自然衰减 → 失败检测。
+        """跨天时跑一次：出勤 → 疲劳回落 → 自然衰减。
 
         ★经营玩法停用（钱/罢工/离职这一整套都退场了）：
           钱不再进出、疲劳不再涨、罢工与离职不再发生。模拟经营玩法已经没有
@@ -1432,6 +1026,9 @@ class Game:
           却一处都不显示，还会顺带把人赶出办公室——工位空出来，"办公室跟随
           真实 Bot 团队"就断了。所以每天的结算保留下来（它还负责日切与存档
           触发点），只关掉跟钱和经营有关的那部分。
+
+        ★破产判定也一并退场（见文件头说明）：这一版不再有任何失败条件，
+        返回的明细里 game_over 恒为 None。
 
         返回一份明细，直接透给客户端当日结算面板。
         """
@@ -1447,8 +1044,6 @@ class Game:
         # ★只报还在真实变化的数：在岗人数。工资这条线整个退场了
         #   （钱不动、界面上也没有金额），报"不结算工资"等于在讲一个不存在的玩法。
         self.event("wages", "今日结算：%d 人在岗" % len(on_duty))
-        # 钱不再变 ⇒ 不会再有"资金为负"⇒ 破产计数恒为 0（字段留着，save.py 会读写它）。
-        self.neg_days = 0
 
         # 2) 疲劳 → 罢工 → 离职
         #    ★经营玩法停用：疲劳不再增长，也不再判罢工、不再判离职。
@@ -1528,11 +1123,13 @@ class Game:
                 w.stamina, w.mood = st[w.who], md[w.who]
 
         # 4) 失败检测
+        #    ★破产机制已下线（见文件头说明）：这里不再判任何失败条件。
+        #      原来的判据是"资金连续为负 3 天"（ST.game_over），挂在钱和声誉
+        #      这套已经退场的假账上。真 Bot 团队没有"钱不够就接不了单"，
+        #      硬造一个新的失败条件只会卡玩家——所以 game_over 恒为 None，
+        #      /api/state 的 game_over 恒为 null（前端读成空串，不显示"游戏结束"）。
         on_duty = [w for w in self.workers.values() if w.on_duty]
-        reason = ST.game_over(self.money, self.rep, on_duty, self.neg_days)
-        if reason:
-            self.game_over_reason = reason
-            self.event("game_over", "游戏结束：%s" % reason)
+        reason = None
         out = {
             "wages": detail, "overtime_days": overtime,
             "quits": [w.who for w in quits],
@@ -1599,10 +1196,8 @@ class Game:
         #   两个数报出来只会让老板聊起玩家看不到、也改不了的指标 —— 只留天数。
         parts = [f"第{self.day}天"]
         if w:
+            # 客户系统已下线：没有"手上的活"可报了，一律报"手上没活"。
             job = ""
-            if w.job:
-                c = next((x for x in self.clients if x.id == w.job), None)
-                job = c.task if c else "手上的活"
             parts.append(f"你自己：心情 {int(w.mood)}/100 体力 "
                          f"{int(w.stamina)}/{ATTR[who]['stamina_max']} "
                          f"{'手上有活「%s」' % job if job else '手上没活'}（{w.acting}）")
@@ -1685,7 +1280,11 @@ class Game:
         with self._lock:
             if not self.meeting:
                 return
-            failures = list(self.failures)
+            # ★失败清单恒为空：它原来的两个写入点（假客户"干砸的单"、
+            #   "客户等太久走了"）都随客户系统下线了。
+            #   甩锅机制本身没下线——真任务失败由前端从 /api/office/panel 读到后
+            #   自己发关系事件（rel_event）——只是后端这条复盘会链路没有素材了。
+            failures = []
             day = self.day
             meeting, gen = self.meeting, self.gen
             pool = [who for who in S.ORDER if self.workers[who].available]
@@ -1732,7 +1331,6 @@ class Game:
             self.meeting["phase"] = "settled"
             self.meeting["settled_at"] = time.time()
             self._blame_store["last_blame_day"] = self.day
-            self.failures = []          # 这批已经复盘过
         if res["culprit"]:
             self.event("blame_result",
                        "%s 被推出来背锅，心情 -6"
@@ -1759,17 +1357,15 @@ class Game:
     def maybe_start_blame(self):
         """主循环里轮询：有失败单就开复盘会。冷却一天。
 
-        ★不能在有活在跑的时候**立刻**开：会议 seat_cmd 优先级压过干活，
-        正在交付的工人会被叫去开会、扔下手上的活，客户耐心耗尽就流失了，
-          流失又产生新的失败单 → 又触发下一场复盘会（实测会把派单闭环卡死）。
+        ★失败清单恒为空（来源随客户系统下线，见 _blame_dialogue 的说明），
+          所以这条"自动开复盘会"的路径现在不会触发。甩锅机制整体保留：
+          冷却表 _blame_store、复盘会的发言与结算都在，真任务失败由前端驱动。
 
-        但也不能无限等：客户源源不断的时候几乎永远有人在干活，
-        复盘会就成了永不触发的死代码（实测 90s 内 0 次触发）。
-        所以是**有上限的等待**：先护一会儿，超时就插进去——
-        交付线程里有 _await_meeting_end 兜底，散会后会继续干，不至于丢单。
+        原来的两道保护（有活时先等等、超时再插进去）也一并留着：
+        哪天失败清单重新有了来源，这段逻辑原样就能用。
         """
         with self._lock:
-            if self.meeting or not BG.should_trigger(self.failures, self.day,
+            if self.meeting or not BG.should_trigger([], self.day,
                                                     self._blame_store):
                 return
             busy = [w for w in self.workers.values()
@@ -1815,12 +1411,17 @@ class Game:
 
     def snapshot(self):
         with self._lock:
-            _rx, _ry = LOCATIONS["reception"]
             return {
                 "version": 1,                 # 契约版本，客户端据此判断格式是否变更
                 "art_layout_version": 3,
-                "gameplay_version": 5,
+                # ★6：客户系统下线（clients / finished / slots / neg_days 都没了，
+                #   conflicts 恒为空）。客户端不读这个号，留着是为了让存档和日志
+                #   能一眼看出这份快照出自哪一版玩法。
+                "gameplay_version": 6,
                 "scene": "office",
+                # money / rep：旧经济系统的墓碑值（见 Game.money / Game.rep）。
+                #   前端 daily_report.gd 的每日结算面板还在读这两个 key，
+                #   所以 key 留着，但它们不再参与任何结算。
                 "day": self.day, "money": self.money, "rep": self.rep,
                 "tick": self.tick,
                 "clock": "%02d:%02d" % (((self.tick - self._day_start) * TICK_GAME_MIN // 60) % 24,
@@ -1852,34 +1453,18 @@ class Game:
                     "eff": round(getattr(w, "eff", 1.0), 2),
                     "log": w.log,
                 } for w in self.workers.values()],
-                "clients": [{
-                    "id": c.id, "task": c.task, "reward": c.reward,
-                    "patience": c.patience, "patience_max": c.patience_max,
-                    "status": c.status, "served_by": c.served_by,
-                    "slot": c.slot, "result": c.result,
-                    "grab_in": max(0, c.grab_tick - self.tick),
-                    # M3-7：需求类型 + 人形，客户端据此挑 sprite
-                    "kind": c.kind, "persona": c.persona,
-                    "persona_name": c.persona_name,
-                    # 客户端要画客户：入场动画中在 pos，完成后在队列位
-                    "x": c.pos[0], "y": c.pos[1],
-                    "queue_x": 8, "queue_y": round(_ry - 1 + (c.slot or 0) * 2, 2),
-                } for c in self.clients],
-                # ★M4-4：把滚动存档里的最近 4 单也透出去。
-                #   M3-9 加 _retire_client() 之后，完成/流失的客户立刻从 clients 移走
-                #   （那是对的：clients 原来会无界增长，30 天到上百条），
-                #   但 finished 没进快照，于是**完成这一态在接口上彻底不可见**——
-                #   e2e_m1 用例 8「客户状态变已完成」就是这么红的。
-                #   补上这个字段，而不是把 _retire_client 撤回去：
-                #   两个问题里只有"完成态看不见"需要修，"列表增长"是真 bug。
-                "finished": [{
-                    "id": c.id, "task": c.task, "reward": c.reward,
-                    "status": c.status, "served_by": c.served_by,
-                    "result": c.result,
-                } for c in self.finished],
-                "conflicts": self.conflicts_view(),
-                # M2-8 经济与失败状态
-                "neg_days": self.neg_days,
+                # ★抢单冲突随客户系统下线，永远是空的。
+                #   key 留着：前端 main_controller.gd 还在读它（d.get("conflicts", [])），
+                #   空数组走的是"没有冲突要显示"那条分支。
+                "conflicts": [],
+                # ★clients / slots 同理：客户系统下线了，这两个恒为空数组。
+                #   key 不能直接删——Web 原型（ai-model-party/web/game.html）
+                #   还在 for(const s of S.slots) / for(const cl of S.clients) 上遍历，
+                #   key 缺失会让那个页面的整段渲染抛 TypeError（页面直接白屏）。
+                #   Godot 客户端不读这两个 key（它的"指令与待办"读真任务）。
+                "clients": [],
+                "slots": [],
+                # ★破产机制已下线：game_over 恒为 null（前端读成空串，不显示"游戏结束"）。
                 "game_over": self.game_over_reason,
                 "last_settle": self.last_settle,
                 "on_duty": [w.who for w in self.workers.values() if w.on_duty],
@@ -1889,7 +1474,6 @@ class Game:
                 "meeting": self.meeting,
                 "seats": {w: list(p) for w, p in SEATS.items()},
                 "table": list(MEETING_TABLE),
-                "slots": sorted(self.slots.keys()),
                 "events": self.events[-40:],
                 "log": self.log[-20:],
             }

@@ -162,7 +162,7 @@ test('the game snapshot gains bot_panel without changing its own contract', asyn
     const response = await fetch(f.base + '/api/state');
     const payload = await response.json();
     assert.equal(payload.version, 1, 'the game contract version is untouched');
-    assert.equal(payload.gameplay_version, 5);
+    assert.equal(payload.gameplay_version, 6);
     assert.ok(Array.isArray(payload.workers), 'original fields still present');
     assert.ok(payload.bot_panel, 'bot_panel is attached when the Bot engine is ready');
     assert.equal(payload.bot_panel.ready, true);

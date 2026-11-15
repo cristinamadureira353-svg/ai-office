@@ -2,12 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
 import { createRequire } from 'node:module';
-import { fixture } from './fixture.mjs';
+import { fixture, legacySave, writeSave } from './fixture.mjs';
 
-test('legacy conflict save: complete state, preserved deliveries, reopening and usable Web UI', {timeout:60000}, async () => {
+// 旧存档（v1 模拟经营玩法）现在只剩一件事要证明：
+// 读得进、读得对、读档后旧玩法的东西一个都不复活。
+const LEGACY_ID = 'legacy-v1-save';
+
+test('legacy save: old clients and conflicts are dropped, the old economy is still listed, and the Web UI stays usable', {timeout:90000}, async t => {
   const f = await fixture();
   const evidence = resolve(process.env.AI_OFFICE_TEST_EVIDENCE);
   await mkdir(evidence, {recursive:true});
@@ -15,50 +17,68 @@ test('legacy conflict save: complete state, preserved deliveries, reopening and 
     const errors = [], selected = [];
   const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
   try {
-    const source = await promisify(execFile)(process.env.AI_OFFICE_TEST_PYTHON, ['-c', `
-import json,sys
-sys.path.insert(0,sys.argv[1])
-import game as G,save as S
-g=G.Game();g.money=869;g.rep=59;g.tick=81175
-for i,(status,who) in enumerate([('待验收','step5'),('待验收','longcat'),('冲突中',None)]):
-    c=G.Client('测试订单'+str(i),96,200,'document','normal');c.id='legacy-'+str(i);c.slot=i;c.status=status;c.served_by=who
-    c.result='完整测试交付物'+str(i) if who else None
-    g.clients.append(c);g.slots[i]=c
-g.conflicts={'legacy-2':None}
-d=S.snapshot(g);d.pop('conflict_data',None)
-print(json.dumps(d,ensure_ascii=False))
-`, join(f.pluginRoot,'miniapp/node/backend/server')], {env:{...process.env,AI_OFFICE_ENV_PATH:f.settings.envFile,AI_OFFICE_SAVE_DIR:join(f.dataDir,'saves'),PYTHONDONTWRITEBYTECODE:'1'}});
-    f.settings.initialSave = join(f.scratch, 'legacy.json');
-    await writeFile(f.settings.initialSave, source.stdout);
     assert.equal((await (await f.post('/api/settings', f.settings)).json()).ok, true);
-    const response = await fetch(f.base+'/api/state');
+    const fresh = await f.get('/api/state');
+    // 手搓一份 v1 旧档：形状照旧 save.py 的 snapshot()，
+    // 但客户/冲突/资金这些字段只能自己拼——新后端里已经没有 Game.Client 可用了。
+    const legacy = legacySave(fresh.workers);
+    // 先证明这份旧存档本身确实带着客户与冲突数据，否则"被清空"是无的放矢。
+    assert.equal(legacy.clients.length, 3, 'the legacy save really carries three clients');
+    assert.equal(legacy.conflicts.length, 1, 'the legacy save really carries one conflict id');
+    assert.equal(legacy.finished.length, 1, 'the legacy save really carries one finished delivery');
+    assert.equal(legacy.money, 869, 'the legacy save really carries the old money');
+    assert.equal(legacy.rep, 59, 'the legacy save really carries the old reputation');
+    await writeSave(f, LEGACY_ID, legacy);
+    const legacyFile = join(f.dataDir, 'saves', LEGACY_ID + '.json');
+    const legacyBytes = await readFile(legacyFile, 'utf8');
+
+    const loaded = await (await f.post('/api/load', {id: LEGACY_ID})).json();
+    assert.equal(loaded.ok, true, 'the legacy save still loads: ' + (loaded.msg || ''));
+    const response = await fetch(f.base + '/api/state');
     assert.equal(response.status, 200, 'legacy conflict IDs must not break the entire state endpoint');
     const before = await response.json();
-    // 先证明这份旧存档本身确实带着客户与冲突数据，否则"被清空"是无的放矢。
-    const seeded = JSON.parse(source.stdout);
-    assert.equal(seeded.clients.length, 3, 'the legacy save really carries three clients');
-    assert.equal(seeded.conflicts.length, 1, 'the legacy save really carries one conflict id');
     // 经营玩法已停用（命令即工单）：读档一律清空客户、交付与冲突（防盗门），
     // 旧存档里的 3 个客户与冲突不借读档复活——所以这里是 0，不是 3。
     assert.deepEqual(before.clients, [], 'restore must drop every recovered client');
-    assert.deepEqual(before.finished, [], 'restore must drop recovered deliveries');
     assert.deepEqual(before.conflicts, [], 'a conflict id cannot resurrect a conflict once clients are cleared');
-    // 但队伍与经济必须原样保留，整个 /api/state 不能崩。
+    // 客户/交付物整套下线后，这两个 key 直接不在状态契约里了。
+    assert.equal('finished' in before, false, 'the deliveries key is gone from the state contract');
+    assert.equal('neg_days' in before, false, 'the negative-days key is gone from the state contract');
+    // 旧经济只剩墓碑：钱恒为 0、声誉恒为 50，旧档里的数字不复活。
+    assert.equal(before.money, 0, 'money is a tombstone now, the legacy value is dropped');
+    assert.equal(before.rep, 50, 'reputation is a tombstone now, the legacy value is dropped');
+    assert.equal(before.game_over, null, 'the legacy bankruptcy reason must not surface');
+    // 但队伍与旧档的其它内容必须原样保留，整个 /api/state 不能崩。
     assert.equal(before.workers.length, 5);
-    assert.deepEqual([before.day,before.money,before.rep,before.tick], [1,869,59,81175]);
+    assert.equal(before.day, 3);
+    assert.ok(before.tick >= 81175, 'the legacy tick is restored, not rewound');
+    for (const w of before.workers) {
+      assert.equal(w.job, null, w.id + ' must not keep a job pointing at a dead client');
+      assert.equal(w.eff, 1, w.id + ' must not keep the efficiency of a dead job');
+      assert.doesNotMatch(w.acting, /接待处/, w.id + ' must not keep walking to the reception desk');
+    }
+    // 前端据此判"这是旧档"：存档列表里仍读得到旧的钱和旧的名声。
+    const saves = await f.get('/api/saves');
+    const listed = saves.saves.find(entry => entry.id === LEGACY_ID);
+    assert.ok(listed, 'the legacy save is listed for the player');
+    assert.equal(listed.money, 869, 'the save list still shows the old money');
+    assert.equal(listed.rep, 59, 'the save list still shows the old reputation');
+    assert.equal(listed.day, 3);
+
     await f.dispose();
     await f.restart();
     const reopened = await f.get('/api/state');
     assert.deepEqual(reopened.clients, [], 'reopening keeps recovered clients cleared');
-    assert.deepEqual(reopened.finished, [], 'reopening keeps recovered deliveries cleared');
-    assert.deepEqual(reopened.conflicts, []);
+    assert.deepEqual(reopened.conflicts, [], 'reopening keeps recovered conflicts cleared');
+    assert.equal(reopened.money, 0);
+    assert.equal(reopened.rep, 50);
     const {chromium} = createRequire(join(process.env.AI_OFFICE_TEST_NODE_MODULES,'package.json'))('playwright');
     browser = await chromium.launch({headless:true,executablePath:process.env.AI_OFFICE_TEST_CHROMIUM,
-      args:['--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+      args:['--use-angle=swiftshader', '--enable-unsafe-swiftshader']});
     const page = await browser.newPage({viewport:{width:1102,height:957}});
     page.on('pageerror', error => errors.push(error.message));
     page.on('console', message => {
-      if (message.type()==='error' && !message.text().includes('status of 500')) errors.push(message.text());
+      if (message.type() === 'error' && !message.text().includes('status of 500')) errors.push(message.text());
     });
     await page.route(f.base+'/api/state', route => route.fulfill({status:500, contentType:'application/json',body:'{"ok":false,"error":"internal"}'}));
     await page.goto(f.base+'/ai-office');
@@ -92,12 +112,12 @@ print(json.dumps(d,ensure_ascii=False))
       await page.keyboard.press('Escape');
       await pause(100);
     }
-    assert.equal(await readFile(f.settings.initialSave,'utf8'), source.stdout, 'initial legacy save remains read-only');
+    assert.equal(await readFile(legacyFile,'utf8'), legacyBytes, 'the legacy save file remains read-only');
     assert.equal((await readdir(f.dataDir)).includes('network-attempt'), false);
     assert.equal((await readFile(join(f.dataDir,'calls.jsonl'),'utf8')).trim().split('\n').length, 5, 'only five intentional fake chat calls');
     assert.deepEqual(errors, []);
     await writeFile(join(evidence,'legacy-state-web.json'),JSON.stringify({http:response.status,day:before.day,money:before.money,rep:before.rep,
-      workers:before.workers.map(w=>w.id),clients:before.clients.map(c=>({id:c.id,status:c.status,served_by:c.served_by})),selected,errors},null,2));
+      workers:before.workers.map(w=>w.id),clients:before.clients,conflicts:before.conflicts,selected,errors},null,2));
   } finally {
     await browser?.close();
     await f.dispose();
