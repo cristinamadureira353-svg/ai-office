@@ -42,6 +42,13 @@ var _follow_tail := true
 var _send_rect := Rect2()
 var _close_rect := Rect2()
 
+## 每个气泡一个 RichTextLabel：原生桌面版没有 HTML 层，Bot 的回复带表格、
+## 标题和代码，纯 draw_string 只能平铺。这里用 BBCode 排出真正的结构。
+var _labels: Array = []
+var _layout: Array = []
+## 上次排版时的可用宽度：变了才重排，避免每帧重建气泡。
+var _layout_width := 0.0
+
 
 func _ready() -> void:
 	_font = ThemeDB.fallback_font
@@ -84,6 +91,8 @@ func open_with(id: String) -> void:
 	if _entry:
 		_entry.text = ""
 		_entry.visible = true
+	_layout_width = 0.0
+	_rebuild_transcript()
 	queue_redraw()
 	_entry.call_deferred("grab_focus")
 
@@ -169,6 +178,7 @@ func bubble_texts() -> Array:
 func push_user(text: String) -> void:
 	bubbles.append({"who": "boss", "text": text, "done": true, "conversation":who})
 	_follow_tail = true
+	_rebuild_transcript()
 	queue_redraw()
 
 
@@ -178,6 +188,7 @@ func begin_stream() -> void:
 	bubbles.append({"who": who, "text": "", "done": false, "conversation":who})
 	streaming = true
 	_follow_tail = true
+	_rebuild_transcript()
 	queue_redraw()
 
 
@@ -186,6 +197,7 @@ func push_delta(text: String) -> void:
 		begin_stream()
 	bubbles[-1]["text"] += text
 	_follow_tail = true
+	_rebuild_transcript()
 	queue_redraw()
 
 
@@ -193,6 +205,7 @@ func end_stream() -> void:
 	if not bubbles.is_empty():
 		bubbles[-1]["done"] = true
 	streaming = false
+	_rebuild_transcript()
 	queue_redraw()
 
 
@@ -242,16 +255,21 @@ func _draw() -> void:
 func _draw_bubbles(r: Rect2) -> void:
 	_messages.position = r.position + Vector2(24, 94)
 	_messages.size = Vector2(r.size.x - 48, r.size.y - 224)
-	var height := 0.0
-	for bubble in _message_layout():
-		height += bubble.height + 10
-	_bubble_canvas.custom_minimum_size = Vector2(0, maxf(0, height - 10))
-	_bubble_canvas.queue_redraw()
+	# ★只在宽度真的变了才重排。重建气泡要重新解析 BBCode 并让 RichTextLabel
+	#   重新布局，放进 _draw() 里就是每帧做一遍——主循环会被拖慢，寻路和
+	#   键盘输入都会跟着变迟。气泡内容变化时由 push_delta 等地方重建。
+	var width := maxf(120, _messages.size.x - 12)
+	if absf(width - _layout_width) > 0.5:
+		_layout_width = width
+		_rebuild_transcript()
 	if _follow_tail:
 		_follow_tail = false
 		call_deferred("_scroll_to_bottom")
 
 
+## 当前这个人的气泡排版。lines 是纯文本行（测试和降级用），
+## bbcode 是给 RichTextLabel 的富文本。height 由 label 实测高度决定，
+## 没有 label 时退回按行数估算。
 func _message_layout() -> Array:
 	var layout: Array = []
 	var width := maxf(120, _messages.size.x - 12)
@@ -261,17 +279,57 @@ func _message_layout() -> Array:
 			continue
 		var txt := str(bubble.text) + ("▍" if streaming and i == bubbles.size() - 1 else "")
 		var lines := UITheme.wrap(txt, int(width - 104), _font, UITheme.BODY)
-		layout.append({"who":str(bubble.who), "lines":lines, "width":width, "height":maxi(1, lines.size()) * 26 + 28})
+		layout.append({
+			"who": str(bubble.who), "lines": lines, "width": width,
+			"text_width": width - 104,
+			"bbcode": MarkdownBBCode.to_bbcode(txt),
+			"height": maxi(1, lines.size()) * 26 + 28,
+		})
 	return layout
+
+
+## 重建气泡：把 BBCode 写进 RichTextLabel，用它实测出来的高度定每个气泡的位置。
+func _rebuild_transcript() -> void:
+	_layout = _message_layout()
+	while _labels.size() < _layout.size():
+		var label := RichTextLabel.new()
+		label.bbcode_enabled = true
+		label.fit_content = true
+		label.scroll_active = false
+		label.selection_enabled = false
+		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		# ★ 不许抢焦点：RichTextLabel 默认 FOCUS_ALL，插进消息区会把键盘焦点
+		#   从输入框抢走，玩家打的字进不了 LineEdit。
+		label.focus_mode = Control.FOCUS_NONE
+		label.add_theme_font_size_override("normal_font_size", UITheme.BODY)
+		label.add_theme_color_override("default_color", Color("#463022"))
+		_bubble_canvas.add_child(label)
+		_labels.append(label)
+	while _labels.size() > _layout.size():
+		var stale: RichTextLabel = _labels.pop_back()
+		stale.queue_free()
+	var y := 0.0
+	for i in _layout.size():
+		var entry: Dictionary = _layout[i]
+		var label: RichTextLabel = _labels[i]
+		label.size = Vector2(entry["text_width"], 0)
+		label.text = entry["bbcode"]
+		# 用户气泡是浅底深字，Bot 气泡是米底深字，两边同一套纸面色。
+		var body := label.get_content_height()
+		if body <= 0.0:
+			body = maxi(1, entry["lines"].size()) * 26.0
+		entry["height"] = body + 28.0
+		label.position = Vector2(90, y + 14)
+		y += entry["height"] + 10
+	_bubble_canvas.custom_minimum_size = Vector2(0, maxf(0, y - 10))
+	_bubble_canvas.queue_redraw()
 
 
 func _draw_transcript() -> void:
 	var y := 0.0
-	for bubble in _message_layout():
+	for bubble in _layout:
 		UITheme.patch(_bubble_canvas, Rect2(0, y, bubble.width, bubble.height), "dialogue_bubble", .18)
 		UITheme.text_in(_bubble_canvas, _font, Rect2(14, y + 14, 64, 24), NAMES.get(bubble.who, bubble.who), UITheme.SMALL, Color("#734522"))
-		for i in bubble.lines.size():
-			UITheme.text_in(_bubble_canvas, _font, Rect2(90, y + 14 + i * 26, bubble.width - 104, 26), bubble.lines[i], UITheme.BODY, Color("#463022"))
 		y += bubble.height + 10
 
 
