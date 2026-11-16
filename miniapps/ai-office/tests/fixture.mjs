@@ -4,7 +4,7 @@ import { join, resolve } from 'node:path';
 import { createServer } from 'node:net';
 import { pathToFileURL } from 'node:url';
 
-export async function fixture({relocate=false,resting=false,initialSave=''}={}) {
+export async function fixture({relocate=false,resting=false,initialSave='',models=[]}={}) {
   let pluginRoot = resolve(process.env.AI_OFFICE_TEST_PLUGIN);
   const python = process.env.AI_OFFICE_TEST_PYTHON;
   if (!python) throw new Error('Set AI_OFFICE_TEST_PYTHON to the existing venv interpreter');
@@ -83,7 +83,9 @@ runpy.run_path(str(bridge), run_name='__main__')
     get closed() { return gateClosed; },
   };
   const agent = {
-    async models() { return { models: [], default: { providerId: 'mock', modelId: 'mock-model' } }; },
+    // A test that cares about display names passes its own catalog; every other test keeps the
+    // empty one, so nothing else changes.
+    async models() { return { models, default: { providerId: 'mock', modelId: 'mock-model' } }; },
     async run(input, options) {
       agentRuns.push({ text: input.text, sessionId: input.sessionId ?? null });
       const sessionId = input.sessionId ?? ('session-mock-' + agentRuns.length);

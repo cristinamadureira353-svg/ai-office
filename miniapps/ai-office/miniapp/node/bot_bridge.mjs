@@ -786,9 +786,28 @@ export async function createBotBridge(context) {
    * The model a Bot really runs on, in words the player can read. A Bot without a model of
    * its own follows whatever the Host is set to.
    */
-  function modelLabel(bot) {
+  /**
+   * The single line the office detail panel shows for a Bot's model.
+   *
+   * The provider id is an internal handle: for a built-in provider it is short and meaningful
+   * (`minimax`), but a custom provider is `custom_provider:provider-8b66a2` - long enough that a
+   * narrow column cuts it off before the model name, so the player reads garbage. Name the model
+   * the way the picker does: the Host catalog's display name, else the model id. Only built-in
+   * providers keep the "provider / model" form.
+   */
+  async function modelLabel(bot) {
     if (!bot?.model) return '跟随宿主默认';
-    const base = String(bot.model.providerId) + ' / ' + String(bot.model.modelId);
+    const providerId = String(bot.model.providerId ?? '');
+    const modelId = String(bot.model.modelId ?? '');
+    let base = modelId;
+    try {
+      const catalog = await engine.modelCatalog();
+      const entry = (catalog?.models ?? []).find((m) => m.providerId === providerId && m.modelId === modelId);
+      if (entry?.displayName) base = String(entry.displayName);
+      else if (!providerId.startsWith('custom_provider:')) base = providerId + ' / ' + modelId;
+    } catch {
+      // A catalog we cannot read must not break the panel; the model id is enough.
+    }
     const effort = bot.model.thinking?.effort;
     return effort ? base + ' · ' + effort : base;
   }
@@ -853,7 +872,7 @@ export async function createBotBridge(context) {
         name: bot.name,
         role: bot.role ?? '',
         model: bot.model ?? null,
-        model_label: modelLabel(bot),
+        model_label: await modelLabel(bot),
         status: task?.status ?? 'idle',
         result_preview: String(task?.result ?? '').slice(0, 200),
       });
@@ -888,7 +907,7 @@ export async function createBotBridge(context) {
         name: chief.name,
         role: chief.role ?? '',
         model: chief.model ?? null,
-        model_label: modelLabel(chief),
+        model_label: await modelLabel(chief),
       } : null,
       staff,
       empty_slots: emptySlots,
