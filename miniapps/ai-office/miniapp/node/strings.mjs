@@ -193,6 +193,9 @@ export default {
     'agentError.reason.network': '连不上模型服务，检查一下网络后点「重试」',
     'agentError.reason.auth': '这个模型的账号或密钥不可用。在 Bot 设置里换个模型就能继续',
     'agentError.reason.quota': '这个模型的额度用完了。在 Bot 设置里换个模型就能继续',
+    // 宿主报 429 时给的原因是 usage_limit，不是 quota。少了这条就会落到
+    // 「模型服务繁忙」的兜底，玩家看不出其实是额度到顶了。
+    'agentError.reason.usage_limit': '这个模型的额度已经用完，要等额度恢复。急的话在 Bot 设置里换个模型就能继续',
     'agentError.reason.context_too_long': '这段对话太长了，模型装不下。在 Bot 详情里点「新对话」就能继续',
     'agentError.reason.blocked': '这条消息没能处理（被内容安全拦截）。换个说法再试试',
     'agentError.reason.invalid_request': '模型不接受这次请求。换个模型或换个说法再试试',
@@ -515,6 +518,7 @@ export default {
     'agentError.reason.network': "Couldn't reach the model service. Check the network, then press Retry",
     'agentError.reason.auth': "This model's account or key isn't working. Pick another model in the Bot's settings to continue",
     'agentError.reason.quota': "This model's quota is used up. Pick another model in the Bot's settings to continue",
+    'agentError.reason.usage_limit': "This model's quota is used up for now. Wait for it to reset, or pick another model in the Bot's settings to continue",
     'agentError.reason.context_too_long': 'This conversation is too long for the model. Start a new chat from the Bot details to continue',
     'agentError.reason.blocked': "This message couldn't be handled (blocked by content safety). Try wording it differently",
     'agentError.reason.invalid_request': 'The model rejected this request. Try another model or different wording',

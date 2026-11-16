@@ -53,7 +53,9 @@ export const TURN_RETRY_DELAYS_MS = Object.freeze([8000, 20000]);
  */
 const LIVE_PERSIST_MS = 2000;
 /** Failure reasons a retry cannot fix; anything else (or no reason from an older Host) may be retried. */
-export const NO_RETRY_REASONS = new Set(['auth', 'quota', 'context_too_long', 'blocked', 'invalid_request']);
+// usage_limit is the Host's name for an exhausted quota; quota is the older one. A quota that
+// is used up does not clear within a retry delay, so retrying only re-sends the same large request.
+export const NO_RETRY_REASONS = new Set(['auth', 'quota', 'usage_limit', 'context_too_long', 'blocked', 'invalid_request']);
 /** The turn may already have run, so resending it could repeat a reply or an action. */
 const OUTCOME_UNKNOWN = 'AGENT_OUTCOME_UNKNOWN';
 
