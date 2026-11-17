@@ -841,8 +841,9 @@ export async function createBotBridge(context) {
       at: typeof entry === 'object' ? entry.at ?? 0 : 0,
     }));
     const batchIdOf = new Map(requests.filter((item) => item.batch_id).map((item) => [item.batch_id, item.request_id]));
+    // Every batch, not just the newest two: 指令与待办 lists them all and scrolls, so a batch
+    // dropped here is work the player can never reach.
     const batches = engine.tasks.batches
-      .slice(-2)
       .map((batch) => ({
         request_id: batchIdOf.get(batch.id) ?? null,
         batch_id: batch.id,
