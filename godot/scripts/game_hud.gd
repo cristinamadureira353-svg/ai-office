@@ -16,6 +16,11 @@ var link: BackendLink
 var state: Dictionary = {}
 var _font: Font
 var _client_rows: Array = []
+## 待办列表的滚动窗口：_task_rect 是列表区域，_task_total/_task_rows 供滚动夹取用。
+var _task_rect := Rect2()
+var _task_scroll := 0
+var _task_total := 0
+var _task_rows := 1
 ## 看板上的「打回」按钮：点了就把返工意见交回 Chief。
 var _reject_rects: Array = []
 var details_open := false
@@ -28,6 +33,11 @@ signal chief_requested
 var _chief_area: Control
 const CLIENT_Y := 84.0
 const CLIENT_H := 356.0
+## 待办列表：一行多高、从面板顶往下留多少、底部留多少。
+## 能放几行由面板高度算出来，不写死——面板变高就会自动多显示几条。
+const TASK_ROW_H := 54.0
+const TASK_LIST_TOP := 60.0
+const TASK_LIST_PAD := 20.0
 const EVENT_Y := 456.0
 const EVENT_H := 216.0
 ## M3-8：HUD 换上 M3-6 的正式图标
@@ -211,18 +221,50 @@ func _draw_clients() -> void:
 				"还没有任务，对 Chief 说句话就会开工", UITheme.BODY, C_DIM)
 		return
 
-	var i := 0
-	for task in tasks:
-		if i >= 5:
-			break
-		var cy := y + 60 + i * 54
+	# ★这里不再写死「只取前 5 条」。面板能放几行由高度算出来，放不下的靠滚轮翻，
+	#   列表底部写明「第 a–b 条 / 共 N 条」，让人知道后面还有、也知道总共多少。
+	var list_top := y + TASK_LIST_TOP
+	_task_rect = Rect2(x + 12, list_top, w - 24, h - TASK_LIST_TOP - TASK_LIST_PAD)
+	_task_total = tasks.size()
+	_task_rows = maxi(1, int(_task_rect.size.y / TASK_ROW_H))
+	var win := task_window(_task_total, _task_scroll, _task_rows)
+	_task_scroll = int(win["scroll"])
+	for row in int(win["count"]):
+		var task: Dictionary = tasks[int(win["start"]) + row]
+		var cy := list_top + row * TASK_ROW_H
 		var st := String(task.get("status", ""))
 		var line := "%s · %s" % [_text_of(task.get("bot_name", null)), String(task.get("title", ""))]
 		UITheme.text_in(self, _font, Rect2(x + 24, cy, 214, 24), line, UITheme.BODY, C_TXT)
 		# 状态徽标复用看板那一套，不另造颜色。
 		UITheme.text_in(self, _font, Rect2(x + 242, cy, w - 266, 24),
 				bot_badge(st), UITheme.SMALL, bot_color(st), HORIZONTAL_ALIGNMENT_RIGHT)
-		i += 1
+	if _task_total > int(win["count"]):
+		UITheme.text_in(self, _font, Rect2(x + 24, y + h - 26, w - 48, 20),
+				"第 %d–%d 条 / 共 %d 条 · 滚轮翻" % [
+					int(win["start"]) + 1, int(win["start"]) + int(win["count"]), _task_total],
+				UITheme.SMALL, C_DIM)
+
+
+## 待办列表的可视窗口：从 start 起显示 count 行，scroll 已夹回合法范围。
+##
+## 抽成纯函数是为了能单独测——面板本体要字体、主题和真实尺寸，测起来很重，
+## 而这里要守的只是「能放几行就放几行、滚到底能看到最后一条」。
+static func task_window(total: int, scroll: int, max_rows: int) -> Dictionary:
+	var rows := maxi(1, max_rows)
+	var top := clampi(scroll, 0, maxi(0, total - rows))
+	return {"start": top, "count": mini(rows, maxi(0, total - top)), "scroll": top}
+
+
+## 滚轮翻待办列表。指针不在列表上就不吃事件（交给别处处理），返回是否吃掉。
+func scroll_tasks(up: bool, at: Vector2) -> bool:
+	if details_open or not _task_rect.has_point(at):
+		return false
+	var before := _task_scroll
+	_task_scroll = clampi(_task_scroll + (-1 if up else 1), 0, maxi(0, _task_total - _task_rows))
+	if _task_scroll == before:
+		return false
+	queue_redraw()
+	return true
 
 
 func _draw_events() -> void:

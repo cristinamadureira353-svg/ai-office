@@ -785,6 +785,12 @@ func _pick(screen: Vector2) -> Dictionary:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	# ── 鼠标滚轮：待办列表放不下时翻页（指针在列表上才吃）──
+	if event is InputEventMouseButton and event.pressed \
+			and event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]:
+		if hud.scroll_tasks(event.button_index == MOUSE_BUTTON_WHEEL_UP, event.position):
+			get_viewport().set_input_as_handled()
+			return
 	# ── 鼠标点击 ──
 	if event is InputEventMouseButton and event.pressed \
 			and event.button_index == MOUSE_BUTTON_LEFT:
